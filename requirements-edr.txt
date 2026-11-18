@@ -1,0 +1,6 @@
+# Elementary CLI (edr), in its OWN venv: its dependency pins clash with dagster.
+# python -m venv .venv-edr && .venv-edr/bin/pip install -r requirements-edr.txt
+elementary-data==0.26.1
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+duckdb==2.0.0

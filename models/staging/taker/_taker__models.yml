@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_taker_plays
+    description: >
+      One row per attempt the taker script logged, from each strategy's plays.csv. action
+      = take | pass. Most takes executed (they are in stg_fills); a few were accepted but
+      never filled.
+    columns:
+      - name: taker_play_id
+        data_tests: [unique, not_null]
+      - name: strategy
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['taker_a', 'taker_b']
+      - name: action
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['take', 'pass']
+      - name: combo_ticker
+        data_tests: [not_null]
+      - name: is_field_count_ok
+        description: The row has exactly its file header's field count (so the comma split is exact).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true]
+
+  - name: stg_taker_log
+    description: >
+      One row per taker-script log line. log_kind = rfq | quote | accepted. Accepted is not
+      the same as filled. Quote rows come from several competing market makers.
+    columns:
+      - name: taker_log_id
+        data_tests: [unique, not_null]
+      - name: log_kind
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['rfq', 'quote', 'accepted']
+      - name: logged_at_utc
+        data_tests: [not_null]

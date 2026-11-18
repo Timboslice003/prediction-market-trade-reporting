@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_quote_submissions
+    description: >
+      One row per quote-submission record (attempt_id x phase). Missing rows before var
+      submission_log_complete_from_date (archive copy only); not fixable, flagged in
+      mart_market_maker_monitoring.
+    columns:
+      - name: submission_id
+        description: attempt_id || ':' || phase.
+        data_tests: [unique, not_null]
+      - name: attempt_id
+        description: Pairs a 'pre' with its 'post'. 'skipped' rows stand alone.
+        data_tests: [not_null]
+      - name: phase
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['pre', 'post', 'skipped']
+      - name: success
+        description: FALSE on every 'pre' row, NULL on 'skipped'. Filter on phase first.
+      - name: quote_id
+        description: Non-null only on a successful 'post'.
+      - name: record_schema
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['quote_submission_v1', 'quote_submission_v2']
+      - name: skip_reason
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['both_sides_gated', 'subpenny_both_bids', 'drop_stale_age_exceeded', 'drop_stale_predicted']
+      - name: submitted_at_utc
+        description: Taken after the rate-limit token is acquired. A large gap to response_at_utc is scheduling delay, not network.

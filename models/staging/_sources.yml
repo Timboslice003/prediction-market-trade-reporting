@@ -1,0 +1,112 @@
+version: 2
+
+# Every source reads the extract under DBT_DATA_ROOT (default data/synthetic,
+# written by scripts/generate_synthetic.py). Read-only.
+# Layout: <table>/month=YYYY-MM/<source-file-stem>.parquet, one Parquet file per
+# source log file. `filename` is exposed so tests can reconcile per file
+# against the extract manifest.
+# Lineage on every row: _source_key (the source log file), _source_origin
+# (archive | host_copy), _line_no (1-based line in the source file),
+# _parse_error (the line could not be parsed; raw_json kept as read).
+
+sources:
+  - name: rfq
+    description: Pricing-decision log of the market-making bot (one row per RFQ decision).
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/{name}/*/*.parquet', hive_partitioning = true, filename = true, union_by_name = true)"
+    tables:
+      - name: rfq_outcomes
+        description: >
+          Every non-filtered pricing decision, all schema eras (rfq_outcome_v1 after the
+          schema cutover; would_quote_v2 / exposure_rejected_v2 / breaker_skip_v2 /
+          balance_guard_skip_v1 before it). Filtered decisions were skipped at extraction.
+      - name: rfq_outcomes_slim
+        description: >
+          Every pricing decision (filtered ones included) for the completeness window,
+          pre-typed, no raw_json.
+
+  - name: events
+    description: The exchange's WebSocket frames as the bot logged them, completeness window only. Lossy under load.
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/{name}/*/*.parquet', hive_partitioning = true, filename = true, union_by_name = true)"
+    tables:
+      - name: events_rfq_created
+        description: rfq_created frames, pre-typed, no raw_json.
+      - name: events_other
+        description: Every other frame type (the bot's own quote events), raw_json kept.
+
+  - name: quotes
+    description: Quote submission audit log.
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/{name}/*/*.parquet', hive_partitioning = true, filename = true, union_by_name = true)"
+    tables:
+      - name: quote_submissions
+        description: >
+          pre / post / skipped submit records. Before var submission_log_complete_from_date
+          only the archive copy exists and it is missing rows.
+
+  - name: fills
+    description: Fill records (fill_v2 / fill_v3).
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/{name}/*/*.parquet', hive_partitioning = true, filename = true, union_by_name = true)"
+    tables:
+      - name: fills_settled
+        description: Settled fill file (one file per reporting day); the authoritative fills plus the legacy Python settlement script's P&L.
+      - name: fills_raw
+        description: Raw hourly fill log. Starts two days before the settled file.
+
+  - name: settlement
+    description: Settlement-side records.
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/{name}/*/*.parquet', hive_partitioning = true, filename = true, union_by_name = true)"
+    tables:
+      - name: exchange_settlements
+        description: settlement_v1, the bot's poll of the account's settlements (one row per ticker x side).
+      - name: loss_budget
+        description: loss_budget_v1, the bot's running P&L ledger.
+      - name: market_results
+        description: >
+          The exchange's result per leg market (every leg any fill touched, plus the
+          account's single-market trades). One file, no lineage columns.
+        config:
+          meta:
+            external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/market_results/market_settlements.parquet', filename = true, file_row_number = true)"
+
+  - name: extract_meta
+    description: Extract bookkeeping.
+    tables:
+      - name: manifest
+        description: One row per source file processed (status ok / superseded). All columns are VARCHAR.
+        config:
+          meta:
+            external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/_manifest/manifest.parquet')"
+      - name: expectations
+        description: >
+          SYNTHETIC DATA ONLY: the generator's ground truth (planted counts, the P&L it
+          computed independently). Read by tests through the expected() macro, never by
+          a model.
+        config:
+          meta:
+            external_location: "read_parquet('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/_manifest/expectations.parquet')"
+
+  - name: taker
+    description: >
+      The account's separate taker script's own ledgers, one folder per strategy. Read as
+      raw text, one row per file, so staging can number lines exactly (read_csv /
+      read_json expose no line number).
+    tables:
+      - name: taker_plays_files
+        description: plays.csv per strategy, one row per attempt (TAKE or PASS). The strategies' headers differ.
+        config:
+          meta:
+            external_location: "read_text('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/taker/*/plays.csv')"
+      - name: taker_log_files
+        description: log.jsonl per strategy, one line per RFQ created / quote seen / quote accepted, {ts, kind, payload}.
+        config:
+          meta:
+            external_location: "read_text('{{ env_var('DBT_DATA_ROOT', 'data/synthetic') }}/taker/*/log.jsonl')"

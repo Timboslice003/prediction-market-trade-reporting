@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: int_loss_budget_ledger
+    description: >
+      One row per loss-budget ledger write in write order, with the cumulative's step
+      (cumulative_jump = cumulative - previous cumulative - pnl), the breaks it detects
+      (the dual-instance replay, the restart from 0), repeat writes of a settle_key, and the
+      bridge window (last restart-from-zero .. the bridged entry).
+    columns:
+      - name: ledger_entry_id
+        data_tests: [unique, not_null]
+      - name: ledger_seq
+        data_tests: [unique, not_null]
+      - name: bridge_window
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['before_window', 'in_window', 'after_window']
+      - name: is_repeat_write
+        description: The settle_key was already written earlier (the dual-instance re-bookings).
+      - name: is_bridge_end_entry
+        description: The entry the bridge reconciles to (last one before var loss_budget_bridge_end_before_utc).
+
+  - name: int_exchange_settlements_attributed
+    description: >
+      One row per exchange settlement row (ticker x side), attributed to exactly one
+      source: bot, bot_taker, manual_single_market, manual_combo, bot_plus_other_activity,
+      known_artifact, bot_fill_log_only, or unexplained (rules in the model header). The
+      exchange does not net YES against NO, so attribution is per side. non_fill_* columns
+      quantify the part of a row that is not the settled fills.
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('stg_exchange_settlements')
+    columns:
+      - name: settlement_id
+        data_tests: [unique, not_null]
+      - name: attribution_source
+        description: Exactly one per row. 'unexplained' rows are stored for review (assert_exchange_settlements_unexplained, warn).
+        data_tests:
+          - not_null:
+              config:
+                severity: error
+          - accepted_values:
+              arguments:
+                values:
+                  - bot
+                  - bot_taker
+                  - manual_single_market
+                  - manual_combo
+                  - bot_plus_other_activity
+                  - known_artifact
+                  - bot_fill_log_only
+                  - unexplained
+              config:
+                severity: error
+      - name: underlying_source
+        description: The source without the known_artifact rule (whose position a scalar row is).
+        data_tests: [not_null]
+      - name: match_kind
+        description: >
+          How the row compares with the settled fills on its ticker x side: exact,
+          exact_ex_fee, cost_estimated, count_differs, cost_differs, no_fills_this_side,
+          no_fills_on_ticker.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['exact', 'exact_ex_fee', 'cost_estimated', 'count_differs',
+                         'cost_differs', 'no_fills_this_side', 'no_fills_on_ticker']
+      - name: revenue_logged_dollars
+        description: The reconciler's computed revenue (count x $1 / 0 / cost if void), not the exchange's payout. 0 on every scalar row.
+      - name: non_fill_pnl_logged_dollars
+        description: Logged pnl minus what the fills alone would have logged. 0 for bot / bot_taker rows.

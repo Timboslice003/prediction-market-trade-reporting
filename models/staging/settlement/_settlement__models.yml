@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_market_results
+    description: >
+      One row per leg market with the exchange's result (every fill leg is covered). Some
+      markets settled 'scalar' (voided, fractional settlement value).
+    columns:
+      - name: market_ticker
+        data_tests: [unique, not_null]
+      - name: market_result
+        description: The exchange's result as returned (yes | no | scalar).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no', 'scalar']
+      - name: result_bucket
+        description: The extract's bucket. scored = yes/no; void = scalar.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['scored', 'void']
+      - name: settlement_value_dollars
+        description: Payout per YES contract (1 / 0 for scored markets, a fraction for void ones).
+      - name: settled_at_utc
+        description: The exchange's settlement_ts (from raw_json; the extract's typed settled_ts column is empty).
+      - name: _line_no
+        description: 1-based Parquet row number (the file has no lineage columns).
+
+  - name: stg_exchange_settlements
+    description: >
+      One row per (ticker, side) from the bot's poll of the account's settlements
+      (settlement_v1). Covers the whole account, manual trades included; the revenue is the
+      bot's own computation. Reconciliation only, never the P&L source.
+    columns:
+      - name: settlement_id
+        description: combo_ticker || ':' || side.
+        data_tests: [unique, not_null]
+      - name: side
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']
+      - name: settlement_result
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no', 'scalar']
+
+  - name: stg_loss_budget
+    description: >
+      One row per loss-budget ledger write (loss_budget_v1). settle_key is the log's
+      `fill_id`, which is an idempotency key "settle:{combo}:{side}" and does not join to fills.
+    columns:
+      - name: ledger_entry_id
+        description: _source_key || ':' || _line_no.
+        data_tests: [unique, not_null]
+      - name: settle_key
+        description: >
+          "settle:{combo_ticker}:{side}". Keys written twice in the dual-instance window
+          (same pnl, seconds apart) are kept: they are not true duplicates.
+        data_tests: [not_null]
+      - name: side
+        description: Parsed from settle_key.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']

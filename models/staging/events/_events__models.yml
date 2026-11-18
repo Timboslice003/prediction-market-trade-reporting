@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: stg_events_rfq_created
+    description: >
+      One row per rfq_created frame, completeness window. Lossy under load: diagnostic
+      only, never a population or rate source.
+    columns:
+      - name: rfq_id
+        data_tests: [unique, not_null]
+      - name: rfq_created_at_utc
+        description: The exchange's clock (created_ts, ISO). received_at_utc is ours.
+
+  - name: stg_events_other
+    description: >
+      Non-rfq_created frames, completeness window: quote_created / quote_accepted /
+      quote_executed for the bot's own quotes. Lossy; diagnostic only.
+    columns:
+      - name: event_id
+        description: _source_key || ':' || _line_no.
+        data_tests: [unique, not_null]
+      - name: frame_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['quote_created', 'quote_accepted', 'quote_executed']
+      - name: accepted_side
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']

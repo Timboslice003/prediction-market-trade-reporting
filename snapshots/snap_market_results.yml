@@ -1,0 +1,36 @@
+version: 2
+
+snapshots:
+  - name: snap_market_results
+    relation: ref('stg_market_results')
+    description: >
+      Type-2 history of each leg market's settlement (stg_market_results), so a later
+      correction to a market's result or settlement value keeps the old version instead
+      of overwriting it. Why: settlements get corrected. Fractional (scalar) settlements in
+      particular were once read wrong and patched by hand, and a wrong number patched in
+      is wrong forever and silently. With this snapshot, a re-fetched market whose result
+      or value changed gets a new row, and the old row is closed (dbt_valid_to), so every
+      grade can be traced to the settlement it used. Check strategy on market_result and
+      settlement_value_dollars; the extract is closed, so today every market has exactly
+      one current row.
+    config:
+      schema: snapshots
+      unique_key: market_ticker
+      strategy: check
+      check_cols: ['market_result', 'settlement_value_dollars']
+      hard_deletes: ignore
+    columns:
+      - name: market_ticker
+        description: Leg market ticker (the snapshot's unique key).
+      - name: market_result
+        description: The exchange's result (yes / no / scalar). A change opens a new version.
+      - name: settlement_value_dollars
+        description: The exchange's payout per YES contract. A change opens a new version.
+      - name: dbt_valid_from
+        description: When this version was first snapshotted.
+      - name: dbt_valid_to
+        description: When this version was superseded; NULL for the current version.
+      - name: dbt_scd_id
+        description: Unique id of the version.
+      - name: dbt_updated_at
+        description: Snapshot timestamp of the version.

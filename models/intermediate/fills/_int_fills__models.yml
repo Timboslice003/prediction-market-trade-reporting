@@ -1,0 +1,111 @@
+version: 2
+
+models:
+  - name: int_fill_legs_resolved
+    description: >
+      One row per fill leg: its outcome (won / lost / scalar / void / unresolved) from the
+      leg's declared side and the exchange's market result, plus leg_value, the leg's
+      factor in the parlay's settlement value (1 / 0 / the scalar value, or 1 - it for a
+      NO leg). Ports the legacy script's settlement classification (see the model header).
+      Graded from stg_fill_legs + stg_market_results only.
+    columns:
+      - name: fill_leg_id
+        data_tests: [unique, not_null]
+      - name: fill_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_fills')
+                field: fill_id
+      - name: leg_outcome
+        description: >
+          won / lost / scalar / void. 'unresolved' (the script's pending: no market row
+          or market not terminal) must never appear, so it is not an accepted value.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['won', 'lost', 'scalar', 'void']
+      - name: leg_value
+        description: Null only for void legs.
+
+  - name: int_fills_graded
+    description: >
+      One row per fill, graded by dbt: parlay_result (the legacy script's precedence, plus
+      native scalar grading by the product rule), payout per contract, revenue (exact and
+      paid), fill_cost, fee, gross_pnl (= revenue_paid - fill_cost) and net_pnl (gross -
+      the fee not already inside fill_cost). Never reads the legacy script's answer.
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('stg_fills')
+    columns:
+      - name: fill_id
+        data_tests: [unique, not_null]
+      - name: parlay_result
+        description: yes / no / scalar / result_anomalous; null = unresolved (none today).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no', 'scalar', 'result_anomalous']
+      - name: payout_per_contract
+        description: What one contract on the fill's own side paid (1 / 0 / scalar value).
+      - name: revenue_exact_dollars
+        description: max_payout x payout_per_contract, unrounded (6 dp). Null for result_anomalous.
+      - name: revenue_paid_dollars
+        description: >
+          What the exchange actually pays: revenue_exact rounded DOWN to the whole cent.
+          Equals revenue_exact on every binary fill.
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= revenue_exact_dollars and revenue_paid_dollars > revenue_exact_dollars - 0.01"
+      - name: is_fee_in_fill_cost
+        description: >
+          True on settle_enriched + refetch fills, whose fill_cost the legacy pipeline rebuilt
+          as count x price + fee. The fee is then not subtracted again in net_pnl.
+      - name: fee_outside_cost_dollars
+        description: The fee not already inside fill_cost (0 when is_fee_in_fill_cost). Null when the fee is unknown.
+      - name: gross_pnl_dollars
+        description: revenue_paid - fill_cost.
+      - name: gross_pnl_exact_dollars
+        description: revenue_exact - fill_cost (before cent flooring).
+      - name: net_pnl_dollars
+        description: gross_pnl - fee_outside_cost. Null when the fee is unknown (estimate-cost fills).
+
+  - name: int_fills_origin
+    description: >
+      One row per fill: fill_origin bot_maker | taker_script, from a combo-ticker + contract
+      count match to the taker ledgers (stg_taker_plays). A match with no quote_id is a
+      taker-script fill; a match carrying the bot's quote_id is the fill that looked like a
+      self-trade (is_self_trade_candidate; a bot maker fill, see the header).
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('stg_fills')
+    columns:
+      - name: fill_id
+        data_tests: [unique, not_null]
+      - name: fill_origin
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['bot_maker', 'taker_script']
+
+  - name: int_fill_positions
+    description: >
+      One row per (combo_ticker, side) in the settled fill file: the grain the exchange
+      settles and the loss budget books. Fill aggregates split by origin; cost_ex_fee is
+      cost on the exchange's basis (fee folded in by the legacy pipeline taken back out).
+    columns:
+      - name: position_id
+        data_tests: [unique, not_null]
+      - name: position_origin
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['bot_maker', 'taker_script', 'mixed']

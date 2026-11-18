@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: stg_rfq_outcomes
+    description: >
+      One row per pricing decision that got past the filters (filtered decisions were not
+      extracted), all schema eras unified. `stage` is the unified terminal stage.
+      would_quote_v2 rows (old-era priced RFQs) are 'priced_presubmit': submitted-vs-not
+      cannot be decided without joining the submission log, so staging does not guess.
+      Parse-error rows (truncated lines) are excluded and counted by
+      assert_rowcount_rfq_outcomes. Grain: one row per decision record; rfq_id is unique
+      except for the RFQs decided twice by two concurrent bot instances in the
+      dual-instance window (both rows kept; see
+      assert_rfq_outcomes_repeats_only_in_dual_instance_window).
+    columns:
+      - name: rfq_outcome_id
+        description: _source_key || ':' || _line_no (the source line).
+        data_tests: [unique, not_null]
+      - name: rfq_id
+        data_tests: [not_null]
+      - name: n_decisions_for_rfq
+        description: Rows in this model with the same rfq_id (2 only in the dual-instance window, else 1).
+      - name: record_schema
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['rfq_outcome_v1', 'would_quote_v2', 'exposure_rejected_v2', 'breaker_skip_v2', 'balance_guard_skip_v1']
+      - name: stage
+        description: >
+          Unified terminal stage. rfq_outcome_v1: its terminal_stage.
+          exposure_rejected_v2: priced_rejected. breaker_skip_v2: breaker_skipped.
+          balance_guard_skip_v1: balance_skipped. would_quote_v2: priced_presubmit.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['submitted', 'priced_logged', 'priced_rejected', 'gated_skipped', 'balance_skipped', 'breaker_skipped', 'priced_presubmit']
+      - name: terminal_stage_raw
+        description: terminal_stage as logged (rfq_outcome_v1 only).
+      - name: exit_reason
+        description: >
+          First failed gate. rfq_outcome_v1: as logged. exposure_rejected_v2: the exposure
+          layer. breaker_skip_v2 / balance_guard_skip_v1: 'breaker' / 'balance_guard' (the
+          values rfq_outcome_v1 uses for those stages).
+      - name: combo_ticker
+        description: The parlay market. Null in the old schemas (not logged).
+      - name: legs
+        description: Typed list of legs (superset of both eras' shapes). Unnested in stg_rfq_legs.
+      - name: received_at_utc
+        description: RFQ arrival (bot clock).
+        data_tests: [not_null]
+
+  - name: stg_rfq_legs
+    description: One row per RFQ leg (rfq_outcome_id x leg_index) for every row of stg_rfq_outcomes; cents converted to dollars.
+    data_tests:
+      # On big data this exact key check is slow, so it is tagged to run on full
+      # rebuilds only; the cheap per-outcome count test
+      # (tests/rfq/assert_rfq_legs_match_outcome_leg_counts.sql) covers the grain
+      # in routine runs.
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [rfq_outcome_id, leg_index]
+          config:
+            tags: [heavy, full_rebuild_only]
+    columns:
+      - name: rfq_outcome_id
+        data_tests: [not_null]
+      - name: leg_index
+        data_tests: [not_null]
+      - name: rfq_id
+        data_tests: [not_null]
+      - name: market_ticker
+        data_tests: [not_null]
+      - name: side
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']
+      - name: best_bid_dollars
+        description: Leg book best bid at receipt, dollars (logged in cents).
+
+  - name: stg_rfq_outcomes_slim
+    description: >
+      Every RFQ decision including filtered ones, completeness window only. The
+      full-funnel population for that window.
+    columns:
+      - name: rfq_id
+        data_tests: [unique, not_null]
+      - name: stage
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['filtered', 'submitted', 'priced_logged', 'priced_rejected', 'gated_skipped', 'balance_skipped', 'breaker_skipped']

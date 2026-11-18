@@ -1,0 +1,126 @@
+version: 2
+
+models:
+  - name: recon_fills_python_vs_dbt
+    description: >
+      One row per fill: dbt's grading next to the legacy Python script's, the revenue and
+      P&L differences, and a rule-based mismatch_category on every fill that differs (see
+      the model header). The only model that reads both answers.
+    columns:
+      - name: fill_id
+        data_tests: [unique, not_null]
+      - name: is_mismatch
+        data_tests: [not_null]
+      - name: mismatch_category
+        description: Null when the fill agrees. 'unexplained' must never occur (assert_recon_no_unexplained_mismatches).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - python_scalar_patch_ignored_fill_side
+                  - python_scalar_patch_assumed_half
+                  - python_books_exact_not_paid_cent
+                  - python_pnl_rounded_4dp
+                  - unexplained
+
+  - name: recon_loss_budget_positions
+    description: >
+      One row per position (combo x side) in the settled fill file or the loss-budget
+      ledger, with its bridge_class and its dollars split into the bridge items (see the
+      model header for the per-position identity). The drill-down behind the bridge.
+    columns:
+      - name: position_id
+        data_tests: [unique, not_null]
+      - name: bridge_class
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - bot_in_window
+                  - bot_before_window
+                  - bot_after_window
+                  - bot_ledger_write_lost
+                  - bot_settled_after_ledger_end
+                  - bot_never_reconciled
+                  - other_outside_window
+                  - manual_single_market
+                  - other_activity_opposite_side
+                  - bot_fill_log_only
+                  - manual_combo
+
+  - name: recon_loss_budget_bridge
+    description: >
+      Waterfall from the bot's gross P&L (exact revenue) to the loss budget's cumulative at
+      the bridged entry: one row per bridge item with amount, positions, running total and
+      evidence. The last item is the unexplained remainder, reported as is.
+    columns:
+      - name: step_order
+        data_tests: [unique, not_null]
+      - name: amount_dollars
+        data_tests: [not_null]
+
+  - name: recon_rfq_completeness_hourly
+    description: >
+      Per UTC hour of the completeness window: RFQs the exchange sent (rfq_created events)
+      vs RFQs the bot recorded a decision for (slim decision log), matched on rfq_id, with
+      the gap split by where it falls in the hour and its likely cause (model header). The
+      events feed is lossy, so n_rfqs_sent is a lower bound; n_rfqs_recorded_no_event
+      counts the RFQs only the bot saw. Tagged heavy + monitoring.
+    config:
+      tags: ['heavy', 'monitoring']
+    columns:
+      - name: hour_utc
+        description: The UTC hour.
+        data_tests: [unique, not_null]
+      - name: hour_local
+        description: The hour on the reporting clock (UTC-5).
+      - name: n_rfqs_sent
+        description: RFQs with an rfq_created event created this hour.
+      - name: n_rfqs_recorded
+        description: RFQs the bot recorded a decision for (hour of creation, else of receipt).
+      - name: n_rfqs_in_both
+        description: RFQs in both sources.
+      - name: n_rfqs_missing
+        description: RFQs the exchange sent that the bot has no decision for (the gap).
+      - name: missing_share
+        description: n_rfqs_missing / n_rfqs_sent.
+      - name: n_rfqs_recorded_no_event
+        description: RFQs the bot recorded with no rfq_created event (the events feed dropped the frame).
+      - name: n_missing_head
+        description: Missing RFQs created before the bot's first recorded RFQ that hour.
+      - name: n_missing_mid
+        description: Missing RFQs created between the bot's first and last (before the final minute) recorded RFQ that hour.
+      - name: n_missing_tail
+        description: Missing RFQs created after the bot's last recorded RFQ that hour (final minute ignored).
+      - name: first_recorded_at_utc
+        description: The bot's first recorded RFQ receipt in the hour.
+      - name: last_recorded_at_utc
+        description: The bot's last recorded RFQ receipt in the hour.
+      - name: last_sent_at_utc
+        description: The last rfq_created event in the hour.
+      - name: last_recorded_before_final_minute_utc
+        description: >
+          The bot's last recorded RFQ receipt before minute :59. The final minute is ignored
+          because a writer that recovers at the hour roll writes :59 RFQs to the next file,
+          which would make a lost tail look complete.
+      - name: recording_stopped_sec_before_hour_end
+        description: Seconds between last_recorded_before_final_minute_utc and the end of the hour.
+      - name: events_stopped_sec_before_hour_end
+        description: >
+          Seconds between the last rfq_created event before minute :59 and the end of the hour.
+          The events log is written by the same bot and can lose its own tails.
+      - name: next_hour_resumed_after_sec
+        description: Seconds into the next hour before the bot's first recorded RFQ there.
+      - name: likely_cause
+        description: >
+          bot_off_no_data, no_gap, no_gap_within_tolerance, bot_off, bot_off_partial,
+          decision_log_tail_loss, tail_loss_after_fix, bot_stopped or unexplained (model header).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['bot_off_no_data', 'no_gap', 'no_gap_within_tolerance', 'bot_off', 'bot_off_partial',
+                         'decision_log_tail_loss', 'tail_loss_after_fix', 'bot_stopped', 'unexplained']
+      - name: is_window_edge_hour
+        description: The first or last hour of the window, where boundary effects are expected.

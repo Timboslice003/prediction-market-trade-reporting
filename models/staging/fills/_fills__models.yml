@@ -1,0 +1,141 @@
+version: 2
+
+models:
+  - name: stg_fills
+    description: >
+      One row per fill (fill_id = the exchange's trade id) from the settled fill file. Fill
+      fields only; the legacy Python script's grading is in stg_python_graded. Known: some
+      fills have no quote_id (poll-discovered; logged as ""), a few have a quote_id but no
+      rfq_id, and the taker script's fills are in here too; no field says which they are
+      (int_fills_origin finds them through the taker ledgers).
+    columns:
+      - name: fill_id
+        description: The exchange's trade id. Dedupe key across the websocket and REST-poll channels.
+        data_tests: [unique, not_null]
+      - name: quote_id
+        description: The exchange's quote id. Null on poll-discovered fills (logged as an empty string).
+      - name: rfq_id
+        description: The RFQ. Null on poll-discovered fills and on a few fills with a quote id.
+      - name: creator_id
+        description: RFQ requester (requester_creator_id in the log; same value as creator_id in rfq outcomes).
+      - name: combo_ticker
+        description: The parlay market (market_ticker in the log).
+        data_tests: [not_null]
+      - name: side
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']
+      - name: fill_cost_dollars
+        description: Cost of this fill. Use this for P&L, never submit_cost_estimate_dollars.
+        data_tests: [not_null]
+      - name: accepted_at_utc
+        description: >
+          The exchange's accept time; for fills with no accepted_ts, received_ts instead
+          (see is_accepted_at_from_received). Use for RFQ-day work, never the file date.
+        data_tests: [not_null]
+      - name: is_accepted_at_from_received
+        description: True when accepted_ts was null/0 and accepted_at_utc fell back to received_ts.
+      - name: accepted_date_local
+        description: Reporting-day (UTC-5) calendar date of accepted_at_utc.
+      - name: fill_source
+        description: ws | rest_poll, the channel that logged the record.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ws', 'rest_poll']
+
+  - name: stg_fill_legs
+    description: One row per fill leg (fill_id x leg_index). Book prices converted from cents to dollars.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [fill_id, leg_index]
+    columns:
+      - name: fill_leg_id
+        description: fill_id || ':' || leg_index.
+        data_tests: [unique, not_null]
+      - name: fill_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_fills')
+                field: fill_id
+      - name: leg_index
+        description: 1-based position in the fill's legs[] array.
+      - name: market_ticker
+        description: The leg market.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_market_results')
+                field: market_ticker
+      - name: side
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']
+      - name: best_bid_at_submit_dollars
+        description: Leg best bid at submit, in dollars (logged in cents).
+      - name: spread_at_submit_dollars
+        description: Leg spread at submit, in dollars (logged as spread_cents_at_submit).
+      - name: game_slug
+        description: Dateless {sport}:{matchup}; collides across a series. Use tickers for identity.
+
+  - name: stg_python_graded
+    description: >
+      The legacy Python settlement script's grading per fill (parlay_result, revenue,
+      realized_pnl, legs_settled), keyed by fill_id. For comparison with dbt's own grading
+      only (recon_fills_python_vs_dbt).
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('stg_fills')
+    columns:
+      - name: fill_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_fills')
+                field: fill_id
+      - name: parlay_result
+        description: yes | no | scalar ('scalar' = a leg settled at a fractional value).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no', 'scalar']
+      - name: settled_legacy_flag
+        description: The dead `settled` flag. Never gate on it.
+      - name: is_manually_fixed
+        description: True on fills whose revenue an operator corrected by hand (see manual_fix_note).
+      - name: legs_settled
+        description: List of {market_ticker, side, result, won} per leg as the script saw it.
+
+  - name: stg_fills_raw
+    description: >
+      One row per line of the raw hourly fill log (fill_v2 / v3). Not unique on fill_id:
+      some trades are logged by both channels (REST poll, then websocket). Starts before
+      the settled file.
+    columns:
+      - name: fill_record_id
+        description: _source_key || ':' || _line_no.
+        data_tests: [unique, not_null]
+      - name: fill_id
+        data_tests: [not_null]
+      - name: record_schema
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['fill_v2', 'fill_v3']
+      - name: side
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']

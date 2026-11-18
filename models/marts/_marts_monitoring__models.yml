@@ -1,0 +1,172 @@
+version: 2
+
+models:
+  - name: mart_market_maker_monitoring
+    description: >
+      One row per reporting day: the bot as a market maker (RFQs decided and priced,
+      quoting outcomes, submission HTTP statuses incl. 429 rate limits, live quotes, fills,
+      acceptance rate, receipt-to-submit latency) with alert flags whose thresholds are dbt
+      vars (mm_alert_*). The data covers ONE market maker (this bot): shaped like
+      exchange-side market-maker surveillance but computed from one maker's own view, not
+      the exchange's. Days with known log gaps are flagged and data_period names the
+      period. acceptance_rate is fills per live quote MATCHED BY QUOTE_ID (fills credited
+      to the quote's day); bot maker fills with no counted live quote are counted in
+      n_unmatched_bot_maker_fills, not dropped. Period rates are sum(n_matched_fills) /
+      sum(n_live_quotes), never an average of daily rates. Tagged heavy + monitoring.
+    config:
+      tags: ['heavy', 'monitoring']
+    columns:
+      - name: date_local
+        description: Reporting day (RFQ receipt / submission record / fill date).
+        data_tests: [unique, not_null]
+      - name: n_rfqs_decided
+        description: RFQs that reached a pricing decision (counted decisions; filtered RFQs are not in the extract).
+      - name: n_rfqs_priced
+        description: Decisions that priced the RFQ (stage submitted, priced_presubmit, priced_rejected or priced_logged).
+      - name: n_quoting_decisions
+        description: Decisions that tried to quote (fct_rfq_lifecycle.submit_bucket not null).
+      - name: n_live_quotes
+        description: Quoting decisions whose quote reached the exchange (submit_bucket live_quote).
+      - name: n_dropped_before_sending
+        description: Quoting decisions dropped before sending (stale prediction, both sides gated, ...).
+      - name: n_sent_but_rejected
+        description: Quoting decisions the exchange rejected with an error status.
+      - name: n_send_outcome_unknown
+        description: Quoting decisions sent with no response recorded.
+      - name: n_no_submission_record
+        description: Old-era quoting decisions with no submission record (archive copy missing rows).
+      - name: n_decisions_filled
+        description: Decisions whose quote filled.
+      - name: n_quote_posts
+        description: Quote POST attempts logged (stg_quote_submissions post records; retries count each time).
+      - name: n_post_200
+        description: POSTs answered 200 (live quote).
+      - name: n_post_400
+        description: POSTs answered 400.
+      - name: n_post_409
+        description: POSTs answered 409 (conflict, e.g. RFQ already closed).
+      - name: n_post_429
+        description: POSTs answered 429 (rate limited).
+      - name: n_post_401_403
+        description: POSTs answered 401 / 403 (auth).
+      - name: n_post_5xx
+        description: POSTs answered 500 / 503 / 504.
+      - name: n_post_no_status
+        description: POSTs with no HTTP status (network error).
+      - name: n_skipped_attempts
+        description: Submission attempts the bot skipped before sending.
+      - name: n_bot_maker_fills
+        description: >
+          All the bot's maker fills that day (fill date), matched or not. Equals
+          n_matched_fills + n_unmatched_bot_maker_fills in total over all days, not per day
+          (matched fills are credited to the quote's day).
+      - name: n_matched_fills
+        description: >
+          Bot maker fills whose quote_id is a counted live quote (fct_rfq_lifecycle
+          submit_bucket live_quote, is_counted_decision), credited to the quote's day. The
+          acceptance-rate numerator.
+      - name: n_unmatched_bot_maker_fills
+        description: >
+          Bot maker fills (by fill date) that could not be matched to a counted live quote:
+          no quote_id, or a quote_id with no decision row in the extract (end-of-hour loss,
+          archive-copy gaps). Kept so nothing disappears; not in acceptance_rate.
+      - name: n_taker_fills
+        description: Taker-script fills that day (kept out of the acceptance rate).
+      - name: bot_maker_contracts
+        description: Contracts in the bot's maker fills.
+      - name: bot_maker_fill_cost_dollars
+        description: Fill cost of the bot's maker fills.
+      - name: latency_p50_ms
+        description: Median receipt-to-submit time of live quotes, ms.
+      - name: latency_p90_ms
+        description: 90th percentile receipt-to-submit time of live quotes, ms.
+      - name: latency_p99_ms
+        description: 99th percentile receipt-to-submit time of live quotes, ms.
+      - name: n_latency_samples
+        description: Live quotes with a receipt-to-submit time.
+      - name: acceptance_rate
+        description: >
+          n_matched_fills / n_live_quotes: fills per quote successfully sent, matched by
+          quote_id, both on the quote's day. NULL on days with no live quote.
+      - name: rate_limited_share
+        description: n_post_429 / n_quote_posts.
+      - name: rejected_share
+        description: n_sent_but_rejected / n_quoting_decisions.
+      - name: is_alert_rate_limited
+        description: rate_limited_share above var mm_alert_429_share_max.
+      - name: is_alert_rejections
+        description: rejected_share above var mm_alert_rejected_share_max.
+      - name: is_alert_low_acceptance
+        description: acceptance_rate below var mm_alert_acceptance_rate_min.
+      - name: is_alert_latency
+        description: latency_p99_ms above var mm_alert_latency_p99_ms_max.
+      - name: data_period
+        description: >
+          Which data period the day falls in: submission_log_undercounted (before var
+          submission_log_complete_from_date), decision_log_tail_loss (vars
+          decision_log_tail_loss_*), clean.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['submission_log_undercounted', 'decision_log_tail_loss', 'clean']
+      - name: is_submission_log_undercounted
+        description: The submission log is an archive copy missing rows on this day; POST counts are low.
+      - name: is_decision_log_tail_loss
+        description: The end-of-hour logging bug was live on this day; decision counts are low.
+
+  - name: mart_requester_activity
+    description: >
+      One row per RFQ requester (creator_id) per Monday-start reporting week: RFQs this bot
+      saw from them, priced, quoted and filled, fills per RFQ, fill ratio, notional, and a
+      heavy-price-checker flag (many RFQs, near-zero fills; thresholds are vars). The data
+      covers ONE market maker (this bot): shaped like exchange-side requester surveillance,
+      but computed from one maker's view. One creator_id, e3b0c442...b855, is the SHA-256
+      of the empty string (RFQs with no real creator id): its rows are kept, labelled
+      requester_label 'no_creator_id', and never flagged as a price checker. Tagged heavy +
+      monitoring.
+    config:
+      tags: ['heavy', 'monitoring']
+    columns:
+      - name: requester_week_id
+        description: creator_id ':' week_start_local ('(none)' when the creator id is missing).
+        data_tests: [unique, not_null]
+      - name: creator_id
+        description: >
+          The requester's creator id (hashed by the exchange). NULL on the rows holding the
+          bot fills with no RFQ link, kept so the fills tie to fct_fills. Kept as the
+          exchange sent it, including the empty-id hash.
+      - name: requester_label
+        description: >
+          Who the row is: 'no_creator_id' for creator_id e3b0c44298fc...7852b855 (SHA-256 of
+          the empty string, var empty_creator_id_sha256), 'no_rfq_link' for NULL creator_id
+          (bot fills with no rfq_id), otherwise the creator_id itself.
+        data_tests: [not_null]
+      - name: week_start_local
+        description: Monday of the week (reporting dates).
+        data_tests: [not_null]
+      - name: n_rfqs
+        description: RFQs from the requester that reached the bot's decision log.
+      - name: n_rfqs_priced
+        description: Of those, RFQs the bot priced.
+      - name: n_rfqs_quoted
+        description: RFQs the bot sent a live quote on.
+      - name: n_rfqs_filled
+        description: RFQs where the bot's quote filled.
+      - name: n_fills
+        description: The bot's maker fills with this requester (fill week).
+      - name: fills_per_rfq
+        description: n_fills / n_rfqs.
+      - name: fill_ratio
+        description: n_rfqs_filled / n_rfqs_quoted.
+      - name: contracts
+        description: Contracts in those fills.
+      - name: notional_dollars
+        description: Notional of those fills (quantity x price, as in mart_daily_trade_report).
+      - name: bot_gross_pnl_dollars
+        description: The bot's gross P&L on those fills.
+      - name: is_heavy_price_checker
+        description: >
+          n_rfqs at least var requester_price_checker_min_rfqs and fills per RFQ below var
+          requester_price_checker_max_fill_ratio. Always false for the no_creator_id row
+          (not one requester) and for no_rfq_link rows.

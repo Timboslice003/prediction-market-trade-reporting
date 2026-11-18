@@ -1,0 +1,7 @@
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 1.4.1
+  # Data-observability package. Its report is built by the edr CLI, which
+  # lives in its own venv (requirements-edr.txt).
+  - package: elementary-data/elementary
+    version: 0.26.1

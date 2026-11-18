@@ -1,0 +1,30 @@
+version: 2
+
+seeds:
+  - name: ticker_prefixes
+    description: >
+      Leg-market ticker prefix (series) -> sport / competition / market_type. Drives
+      dim_markets: classification comes ONLY from here, never from labels the bot logged.
+      Soccer competitions share sport 'soccer' with the competition kept. Add a row here
+      when assert_leg_ticker_prefixes_in_seed reports a new prefix (and add any new sport /
+      market_type to the accepted values in _marts__models.yml: a reviewed change, not a
+      silent one).
+    config:
+      column_types:
+        ticker_prefix: varchar
+        sport: varchar
+        competition: varchar
+        market_type: varchar
+    columns:
+      - name: ticker_prefix
+        description: The ticker's first segment (before the first '.'), e.g. BSBML.
+        data_tests: [unique, not_null]
+      - name: sport
+        description: Sport group (soccer competitions grouped as 'soccer').
+        data_tests: [not_null]
+      - name: competition
+        description: League / competition / tour, e.g. Baseball Premier, Soccer Continental Cup.
+        data_tests: [not_null]
+      - name: market_type
+        description: What the market asks (moneyline, total, spread, btts, advance, prop_*).
+        data_tests: [not_null]

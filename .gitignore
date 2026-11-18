@@ -1,0 +1,29 @@
+# Python
+.venv/
+.venv-edr/
+__pycache__/
+*.pyc
+
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Generated data and every build output (DuckDB file, external Parquet,
+# FIXML samples, the downloaded FIX schema, docs site, Elementary report,
+# Dagster state) live under data/ and work/. Nothing generated is committed.
+data/
+work/
+edr_target/
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.csv
+!seeds/**/*.csv
+*.fixml.xml
+*.xsd
+
+# Local env
+.env
+.env.*

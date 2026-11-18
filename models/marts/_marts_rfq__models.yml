@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: fct_rfq_lifecycle
+    description: >
+      One row per RFQ decision (stg_rfq_outcomes grain): the decision's stage, the unified
+      submit split for quoting decisions (live_quote / dropped_before_sending /
+      sent_but_rejected / send_outcome_unknown, plus no_submission_record for old-era
+      decisions whose submission record is missing), the quote id, whether it filled, and
+      receipt-to-submit time. Covers ONE market maker (this bot): it is the maker's own
+      record of the RFQs it saw. Stored as Parquet outside the DuckDB file (materialized
+      external_parquet, tag heavy).
+    columns:
+      - name: rfq_outcome_id
+        description: The decision's id (source line key, as in stg_rfq_outcomes). Unique.
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                tags: ['full_rebuild_only']
+      - name: rfq_id
+        description: The exchange's RFQ id. RFQs in the dual-instance window have two decisions.
+        data_tests: [not_null]
+      - name: record_schema
+        description: The decision log schema (rfq_outcome_v1; would_quote_v2, exposure_rejected_v2, breaker_skip_v2, balance_guard_skip_v1 in the old era).
+      - name: is_v1_schema
+        description: True for rfq_outcome_v1 rows.
+      - name: stage
+        description: The decision's terminal stage (submitted, priced_presubmit, priced_rejected, gated_skipped, priced_logged, breaker_skipped, balance_skipped).
+        data_tests: [not_null]
+      - name: exit_reason
+        description: The decision log's exit_reason, as logged.
+      - name: submit_bucket
+        description: >
+          For quoting decisions (stage submitted, or old-era priced_presubmit): live_quote,
+          dropped_before_sending, sent_but_rejected, send_outcome_unknown, or
+          no_submission_record (old era: the archive copy of the submission log has no
+          record). NULL for decisions that did not try to quote.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['live_quote', 'dropped_before_sending', 'sent_but_rejected',
+                         'send_outcome_unknown', 'no_submission_record']
+      - name: http_status
+        description: The exchange's HTTP status on a failed send (v1 from the decision; old era from the linked submission's post record).
+      - name: error_kind
+        description: The bot's error class for a failed send (client_error, server_error, rate_limited, auth, network).
+      - name: skip_reason
+        description: Old era only, the submission log's skip reason for a dropped attempt.
+      - name: quote_id
+        description: The live quote's id (v1 from the decision; old era from the linked submission).
+      - name: n_submission_attempts
+        description: Old era only, submission attempts linked to the decision (NULL when none).
+      - name: is_filled
+        description: The quote filled (its quote_id is on a fill in stg_fills).
+        data_tests: [not_null]
+      - name: n_fills
+        description: Fills on the quote (a quote can fill more than once).
+      - name: fill_id
+        description: The quote's first fill (earliest accepted), when filled.
+      - name: received_at_utc
+        description: When the bot received the RFQ, UTC.
+      - name: received_at_local
+        description: received_at_utc on the reporting clock (UTC-5).
+      - name: received_date_local
+        description: Reporting date of receipt.
+      - name: exit_at_utc
+        description: When the decision finished, UTC.
+      - name: submitted_at_utc
+        description: v1, submit_wire_at (after token acquire); old era, the linked submission's `pre` submitted_at.
+      - name: receipt_to_submit_ms
+        description: submitted_at - received_at, milliseconds (includes rate-limit token wait).
+      - name: n_decisions_for_rfq
+        description: Decisions for this rfq_id (2 in the dual-instance window, else 1).
+      - name: is_counted_decision
+        description: One decision per RFQ for counting. For doubled RFQs, the filled one, else the earlier. True on every RFQ decided once.
+        data_tests: [not_null]
+      - name: creator_id
+        description: The RFQ requester's creator id.
+      - name: combo_ticker
+        description: The combo the RFQ asked for (null in the old era).
+      - name: n_legs
+        description: Legs in the combo.
+      - name: is_replacement
+        description: The decision replaced an earlier quote on the same RFQ.
+      - name: yes_bid_dollars
+        description: The bot's priced YES bid.
+      - name: no_bid_dollars
+        description: The bot's priced NO bid.
+      - name: max_payout_dollars
+        description: The decision's max payout.
+      - name: _source_key
+        description: Lineage, the source file.
+      - name: _line_no
+        description: Lineage, the source line.

@@ -1,0 +1,28 @@
+# Lives in the repo on purpose: no secrets. dbt finds it in the working
+# directory (run dbt from the repo root). Every path has a default relative to
+# the repo root and can be overridden by an environment variable.
+pm_reporting:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('PM_DUCKDB_PATH', 'work/pm_reporting.duckdb') }}"
+      threads: 4
+      settings:
+        memory_limit: 2GB
+        preserve_insertion_order: false
+      # Directory swap for the external_parquet materialization (macros/external_parquet.sql).
+      module_paths: ["{{ env_var('PM_REPO_ROOT', '.') }}/duckdb_plugins"]
+      plugins:
+        - module: parquet_dir_swap
+
+# Elementary's CLI (edr) reads the package's tables through this profile:
+# the same DuckDB file, schema `elementary`.
+elementary:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('PM_DUCKDB_PATH', 'work/pm_reporting.duckdb') }}"
+      schema: elementary
+      threads: 4

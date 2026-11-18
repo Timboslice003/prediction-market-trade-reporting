@@ -1,0 +1,578 @@
+version: 2
+
+# Accepted values, shared below. They are the seed's values; a seed edit that
+# adds a value must add it here too (deliberately: a new sport or market type
+# is a reviewed change, not a silent one).
+x-sports: &sports
+  - baseball
+  - basketball
+  - hockey
+  - football
+  - soccer
+  - tennis
+
+x-market-types: &market_types
+  - moneyline
+  - total
+  - spread
+  - btts
+  - advance
+  - prop_hr
+  - prop_rfi
+  - prop_pts
+  - prop_td
+
+x-sport-groups: &sport_groups
+  - baseball
+  - basketball
+  - hockey
+  - football
+  - soccer
+  - tennis
+  - multi_sport
+
+models:
+
+  # ---------------------------------------------------------------- dim_markets
+  - name: dim_markets
+    description: >
+      One row per leg market ticker: every market a fill leg touched, plus the account's
+      single-market trades. The ticker is parsed into structured fields and classified by
+      the ticker_prefixes seed, and the exchange's result and settlement time are joined
+      from stg_market_results. An unknown prefix leaves sport / competition / market_type
+      NULL (is_prefix_classified = false); it never becomes 'other' (see
+      assert_leg_ticker_prefixes_in_seed).
+    columns:
+      - name: market_ticker
+        description: The leg market's ticker, e.g. BSBML.20250309T1310.HAWOWL.HAW.
+        data_tests: [unique, not_null]
+      - name: ticker_prefix
+        description: First ticker segment (the series), e.g. BSBML. Key into the ticker_prefixes seed.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ticker_prefixes')
+                field: ticker_prefix
+              config:
+                severity: warn
+      - name: is_prefix_classified
+        description: True when the prefix is in the seed. False means sport / competition / market_type are NULL.
+      - name: sport
+        description: Sport group from the seed (soccer competitions grouped as 'soccer').
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: *sports
+      - name: competition
+        description: League / competition / tour from the seed, e.g. Baseball Premier, Soccer Continental Cup.
+      - name: market_type
+        description: What the market asks, from the seed (moneyline, total, spread, btts, advance, prop_*).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: *market_types
+      - name: event_ticker
+        description: The exchange's event ticker (from stg_market_results; else prefix + event segment).
+      - name: event_segment
+        description: Date segment + matchup, e.g. 20250309T1310.HAWOWL.
+      - name: game_key
+        description: >
+          competition + ':' + event_segment. Markets of different types on the same game share
+          it (BSBML.20250309T1310.HAWOWL.HAW and BSBTOT.20250309T1310.HAWOWL.8). Used for the
+          same-game flags in dim_combos.
+      - name: ticker_event_date
+        description: The date written in the ticker (YYYYMMDD), the event date as the ticker states it.
+      - name: ticker_event_time_code
+        description: The HHMM written after the date (T1310), when present; NULL for series without it (soccer, tennis). As written; no timezone is asserted.
+      - name: matchup_code
+        description: The matchup segment, e.g. HAWOWL.
+      - name: occurrence_at_utc
+        description: The exchange's occurrence time for the market, UTC.
+      - name: occurrence_at_local
+        description: occurrence_at_utc on the reporting clock (UTC-5).
+      - name: selection
+        description: Everything after the matchup, e.g. HAW, TIE, BTTS, 8, HAW2, HAWMORENO12_1. NULL on one-market-per-game series (BSBRFI).
+      - name: selection_subject
+        description: The team / player part of the selection (HAW, HAWMORENO12). NULL for a bare number (totals).
+      - name: selection_number
+        description: >
+          The integer in the selection (the 8 in a total, the 2 in HAW2, the 1 in
+          HAWMORENO12_1). The ticker's code, not always the line itself (a total coded 8 is
+          "over 7.5"); market_title has the exact wording.
+      - name: title
+        description: The exchange's market title.
+      - name: yes_sub_title
+        description: The exchange's YES sub-title.
+      - name: no_sub_title
+        description: The exchange's NO sub-title.
+      - name: market_result
+        description: The exchange's result (yes / no / scalar).
+      - name: result_bucket
+        description: scored (yes/no) or void (scalar), from the extract.
+      - name: is_scalar
+        description: Settled scalar (a fractional settlement value), e.g. a voided leg.
+      - name: settlement_value_dollars
+        description: The exchange's payout per YES contract (1 / 0, or the scalar fraction).
+      - name: market_status
+        description: The market's status at fetch time.
+      - name: settled_at_utc
+        description: The exchange's settlement time, UTC.
+      - name: settled_at_local
+        description: settled_at_utc on the reporting clock.
+      - name: closed_at_utc
+        description: The exchange's market close time, UTC.
+      - name: bot_sport
+        description: The sport the bot logged on its fill legs (most common value). NULL where the bot logged none (poll-discovered fills).
+      - name: bot_market_type
+        description: The market_type the bot logged on its fill legs.
+      - name: bot_game_slug
+        description: The bot's game slug on its fill legs. NULL for poll-discovered fills and for legs the bot could not slug.
+      - name: n_fill_legs
+        description: Number of fill legs on this market.
+      - name: n_fills
+        description: Number of distinct fills with a leg on this market.
+
+  # ---------------------------------------------------------------- dim_combos
+  - name: dim_combos
+    description: >
+      One row per combo (parlay) ticker in the settled fill file: its legs, the sports /
+      competitions / market types it spans, and same-game flags. Combos seen only in the
+      exchange's settlement feed (manual trades) have no leg list and are not here.
+    columns:
+      - name: combo_ticker
+        description: The parlay market ticker (CMB.*).
+        data_tests: [unique, not_null]
+      - name: n_legs
+        description: Number of legs.
+        data_tests: [not_null]
+      - name: leg_market_tickers
+        description: The leg market tickers, in leg order (list).
+      - name: leg_sides
+        description: Each leg's declared side (yes / no), in leg order (list).
+      - name: sports
+        description: Distinct sports of the legs, sorted (list).
+      - name: competitions
+        description: Distinct competitions of the legs, sorted (list).
+      - name: market_types
+        description: Distinct market types of the legs, sorted (list).
+      - name: n_sports
+        description: Number of distinct sports among the legs.
+      - name: n_competitions
+        description: Number of distinct competitions among the legs.
+      - name: sport_group
+        description: The combo's sport when all legs share one, else 'multi_sport'. NULL if any leg's prefix is unclassified.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: *sport_groups
+      - name: n_games
+        description: Number of distinct games (dim_markets.game_key) among the legs.
+      - name: is_same_game
+        description: >
+          At least two legs are on the same game, computed from tickers. Also covers
+          poll-discovered fills the bot logged no flag for, and legs the bot logged with no
+          game slug (assert_same_game_flag_agrees lists the disagreements).
+      - name: is_single_game
+        description: Every leg is on one game (and there are at least two legs).
+      - name: bot_is_same_game_parlay
+        description: The bot's own flag (true if any fill of the combo had it). NULL when the bot logged none.
+      - name: are_all_legs_classified
+        description: Every leg's prefix is in the ticker_prefixes seed.
+      - name: n_fills
+        description: Number of fills on this combo (both sides).
+      - name: n_sides_filled
+        description: 1, or 2 when the account filled both YES and NO.
+      - name: first_fill_at_utc
+        description: Earliest fill accepted time, UTC.
+      - name: last_fill_at_utc
+        description: Latest fill accepted time, UTC.
+
+  # ---------------------------------------------------------------- fct_fills
+  - name: fct_fills
+    description: >
+      One row per fill: the dbt-graded fill with its P&L, origin, ids, times, combo
+      attributes and data-quality flags. Gross P&L is on revenue_paid (what the exchange
+      paid); net P&L is NULL when the fee is unknown.
+    columns:
+      - name: fill_id
+        description: The exchange's trade id. One row each.
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: The exchange's order id of the fill.
+      - name: quote_id
+        description: The bot's quote that was accepted. NULL on poll-discovered fills (incl. the taker-script fills).
+      - name: rfq_id
+        description: The RFQ the quote answered. NULL on poll-discovered fills and a few others.
+      - name: rfq_creator_id
+        description: The RFQ requester's creator id (the counterparty on a maker fill).
+      - name: combo_ticker
+        description: The parlay market traded.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_combos')
+                field: combo_ticker
+      - name: side
+        description: The side this account bought (yes / no).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yes', 'no']
+      - name: fill_origin
+        description: bot_maker (the bot's quote was accepted) or taker_script (the separate taker script's own take), from int_fills_origin.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['bot_maker', 'taker_script']
+      - name: trade_role
+        description: maker (bot_maker) or taker (taker_script).
+      - name: is_self_trade_candidate
+        description: A bot maker fill that a taker ledger also claims (looks like a self-trade; one-sided on this account).
+      - name: is_on_taker_ledger
+        description: The fill matches a take in the taker ledgers.
+      - name: taker_strategy
+        description: taker_a or taker_b for fills on the taker ledgers.
+      - name: n_legs
+        description: Number of legs of the combo.
+      - name: sport_group
+        description: The combo's sport, or 'multi_sport' (dim_combos).
+      - name: sports
+        description: Distinct sports of the combo's legs (list).
+      - name: competitions
+        description: Distinct competitions of the combo's legs (list).
+      - name: market_types
+        description: Distinct market types of the combo's legs (list).
+      - name: n_games
+        description: Number of distinct games among the legs.
+      - name: is_same_game
+        description: At least two legs on one game (dim_combos).
+      - name: is_single_game
+        description: Every leg on one game (dim_combos).
+      - name: contract_count
+        description: Contracts bought (fractional, 2 dp).
+      - name: max_payout_dollars
+        description: What the fill pays if it wins (count x $1).
+      - name: fill_price_dollars
+        description: Price per contract. NULL on some estimate-cost fills.
+      - name: submit_price_dollars
+        description: The bot's submitted bid for this side.
+      - name: yes_bid_dollars
+        description: The bot's quoted YES bid.
+      - name: no_bid_dollars
+        description: The bot's quoted NO bid.
+      - name: parlay_result
+        description: dbt's grade (yes / no / scalar / result_anomalous).
+      - name: is_pnl_graded
+        description: True when the fill has a P&L (not result_anomalous / unresolved).
+      - name: n_legs_won
+        description: Legs won.
+      - name: n_legs_lost
+        description: Legs lost.
+      - name: n_legs_scalar
+        description: Legs settled scalar.
+      - name: parlay_yes_value
+        description: The parlay's YES settlement value (product of leg values).
+      - name: payout_per_contract
+        description: What one contract on this fill's side paid (1 / 0 / scalar value).
+      - name: fill_cost_dollars
+        description: Cost of the fill. Includes the fee on settle_enriched + refetch fills (is_fee_in_fill_cost).
+      - name: revenue_exact_dollars
+        description: max_payout x payout_per_contract, unrounded.
+      - name: revenue_paid_dollars
+        description: What the exchange paid, revenue_exact floored to the cent.
+      - name: gross_pnl_dollars
+        description: revenue_paid - fill_cost.
+      - name: gross_pnl_exact_dollars
+        description: revenue_exact - fill_cost (before cent flooring).
+      - name: fee_dollars
+        description: The exchange's trading fee. NULL (unknown) on estimate-cost fills.
+      - name: fee_outside_cost_dollars
+        description: The fee not already inside fill_cost (0 when is_fee_in_fill_cost). NULL when unknown.
+      - name: net_pnl_dollars
+        description: gross_pnl - fee_outside_cost. NULL when the fee is unknown (never treated as 0).
+      - name: accepted_at_utc
+        description: Execution (accept) time, UTC. The received time where the accept time is missing (is_accepted_at_from_received).
+        data_tests: [not_null]
+      - name: accepted_at_local
+        description: accepted_at_utc on the reporting clock (UTC-5).
+      - name: accepted_date_local
+        description: Reporting-day trade date (the project's reporting day).
+        data_tests: [not_null]
+      - name: accepted_date_utc
+        description: UTC trade date.
+      - name: rfq_created_at_utc
+        description: When the RFQ was created, UTC.
+      - name: submitted_at_utc
+        description: When the bot submitted its quote, UTC.
+      - name: received_at_utc
+        description: When the bot received the fill, UTC.
+      - name: submit_to_accept_sec
+        description: Seconds from quote submit to accept.
+      - name: cost_source
+        description: refetch (cost from the exchange's fill record) or estimate (the bot's estimate).
+      - name: is_cost_estimated
+        description: "Data quality: fill_cost is the bot's estimate (cost_source = estimate); the exchange's actual cost is lower (int_exchange_settlements_attributed, match_kind cost_estimated)."
+      - name: is_fee_known
+        description: "Data quality: fee_dollars is not NULL."
+      - name: is_fee_in_fill_cost
+        description: "Data quality: the legacy pipeline folded the fee into fill_cost (settle_enriched + refetch fills)."
+      - name: is_accepted_at_from_received
+        description: "Data quality: accepted_ts was missing, accepted_at is the received time (timestamp fallback)."
+      - name: is_quote_id_missing
+        description: "Data quality: no quote_id (poll-discovered fill)."
+      - name: is_rfq_id_missing_with_quote
+        description: "Data quality: quote_id present but rfq_id missing."
+      - name: is_in_dual_instance_window
+        description: "Data quality: accepted inside the dual-instance window (vars dual_instance_*), when two bot instances ran."
+      - name: fill_source
+        description: ws or rest_poll, the channel that logged the record.
+      - name: reverify_path
+        description: The bot's reverify path for the fill (reverify_confirmed, settle_enriched).
+      - name: record_schema
+        description: fill_v3 (fill_v2 rows exist only in the raw log).
+      - name: _source_key
+        description: Lineage, the source file.
+      - name: _line_no
+        description: Lineage, the 1-based line in the source file.
+
+  # ---------------------------------------------------------------- fct_fill_legs
+  - name: fct_fill_legs
+    description: >
+      One row per fill leg with its market's attributes (dim_markets), its outcome, and the
+      fill's time / side / combo. Built for leg questions in one query, e.g. every fill
+      touching a Continental Cup market in a date range: select distinct fill_id from
+      fct_fill_legs where competition = 'Soccer Continental Cup' and accepted_date_local
+      between '2025-03-11' and '2025-03-19' (or the fills_for macro).
+    columns:
+      - name: fill_leg_id
+        description: fill_id || ':' || leg_index.
+        data_tests: [unique, not_null]
+      - name: fill_id
+        description: The fill.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_fills')
+                field: fill_id
+      - name: leg_index
+        description: 1-based leg position in the combo.
+      - name: combo_ticker
+        description: The fill's parlay ticker.
+      - name: fill_side
+        description: The side the fill bought (yes / no).
+      - name: n_legs
+        description: Legs in the combo.
+      - name: fill_origin
+        description: bot_maker or taker_script.
+      - name: parlay_result
+        description: The fill's graded parlay result.
+      - name: accepted_at_utc
+        description: The fill's execution time, UTC.
+      - name: accepted_at_local
+        description: The fill's execution time, reporting clock.
+      - name: accepted_date_local
+        description: The fill's reporting-day trade date.
+      - name: accepted_date_utc
+        description: The fill's UTC trade date.
+      - name: market_ticker
+        description: The leg's market.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_markets')
+                field: market_ticker
+      - name: leg_side
+        description: The leg's declared side (yes / no).
+      - name: ticker_prefix
+        description: The leg market's series prefix.
+      - name: sport
+        description: The leg's sport group (dim_markets).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: *sports
+      - name: competition
+        description: The leg's competition (dim_markets).
+      - name: market_type
+        description: The leg's market type (dim_markets).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: *market_types
+      - name: event_ticker
+        description: The exchange's event ticker of the leg market.
+      - name: game_key
+        description: competition + event segment; legs on one game share it.
+      - name: ticker_event_date
+        description: The event date written in the leg's ticker.
+      - name: matchup_code
+        description: The leg's matchup code.
+      - name: selection
+        description: The leg market's selection segment.
+      - name: selection_subject
+        description: Team / player part of the selection.
+      - name: selection_number
+        description: Integer in the selection (ticker code; see dim_markets).
+      - name: market_title
+        description: The exchange's market title.
+      - name: occurrence_at_utc
+        description: The exchange's occurrence time for the market, UTC.
+      - name: leg_outcome
+        description: won / lost / scalar / void.
+      - name: leg_outcome_reason
+        description: Why the leg got its outcome (int_fill_legs_resolved).
+      - name: leg_value
+        description: The leg's factor in the parlay value (1 / 0 / scalar value, or 1 - it for a NO leg).
+      - name: market_result
+        description: The exchange's result for the leg market.
+      - name: settlement_value_dollars
+        description: The exchange's payout per YES contract of the leg market.
+      - name: settled_at_utc
+        description: When the leg market settled, UTC.
+      - name: best_bid_at_submit_dollars
+        description: Leg book best bid at submit, dollars (converted from cents in staging).
+      - name: best_ask_at_submit_dollars
+        description: Leg book best ask at submit, dollars.
+      - name: spread_at_submit_dollars
+        description: Leg book spread at submit, dollars.
+      - name: live_at_submit
+        description: The leg's game was live at submit.
+      - name: _source_key
+        description: Lineage, the source file.
+      - name: _line_no
+        description: Lineage, the source line.
+
+  # ---------------------------------------------------------------- mart_daily_pnl
+  - name: mart_daily_pnl
+    description: >
+      One row per reporting-day trade date x sport group x leg count x fill side. Dated by
+      execution time on the reporting clock (UTC-5). gross_pnl = net_pnl +
+      fees_outside_cost + gross_pnl_fee_unknown on every row. Totals tie to fct_fills.
+    columns:
+      - name: daily_pnl_id
+        description: trade_date_local:sport_group:n_legs:side.
+        data_tests: [unique, not_null]
+      - name: trade_date_local
+        description: Reporting-day trade date (fill accepted time).
+        data_tests: [not_null]
+      - name: sport_group
+        description: The combo's sport, or 'multi_sport'; 'unclassified' if a leg's prefix is not in the seed.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: *sport_groups
+      - name: n_legs
+        description: Legs in the combo.
+        data_tests: [not_null]
+      - name: side
+        description: The side the fills bought (yes / no).
+        data_tests: [not_null]
+      - name: n_fills
+        description: Fills.
+      - name: contracts
+        description: Contracts bought.
+      - name: fill_cost_dollars
+        description: Total fill cost (as fct_fills.fill_cost_dollars).
+      - name: revenue_dollars
+        description: Total revenue the exchange paid (revenue_paid).
+      - name: gross_pnl_dollars
+        description: Total gross P&L (revenue_paid - fill_cost).
+      - name: fees_known_dollars
+        description: Total of the known fees (fills with fee NULL contribute nothing).
+      - name: fees_outside_cost_dollars
+        description: Known fees not already inside fill_cost.
+      - name: net_pnl_dollars
+        description: Total net P&L over fills whose fee is known only.
+      - name: n_fills_fee_unknown
+        description: Fills whose fee is unknown (excluded from net_pnl).
+      - name: gross_pnl_fee_unknown_dollars
+        description: Gross P&L of the unknown-fee fills (not in net_pnl).
+      - name: n_taker_fills
+        description: Of n_fills, the taker-script fills.
+
+  # ---------------------------------------------------------------- mart_daily_trade_report
+  - name: mart_daily_trade_report
+    description: >
+      Regulatory-style daily trade report: one row per trade (fill), keyed by trade date in
+      UTC. MODELED ON an exchange's daily trade report; it is NOT an actual regulatory
+      filing. Column names and types are enforced by a dbt model contract.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: trade_date
+        description: UTC date of execution.
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: trade_id
+        description: The exchange's trade id (fill_id).
+        data_type: varchar
+        constraints:
+          - type: not_null
+        data_tests: [unique]
+      - name: execution_time_utc
+        description: Execution time, UTC (accept time; received time when that is missing).
+        data_type: timestamp
+        constraints:
+          - type: not_null
+      - name: is_execution_time_fallback
+        description: True on trades whose accept time was missing; execution_time_utc is then the received time.
+        data_type: boolean
+      - name: contract_ticker
+        description: The contract traded (combo ticker).
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: side
+        description: yes or no (the side bought).
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: quantity
+        description: Contracts (2 dp).
+        data_type: decimal(18,2)
+        constraints:
+          - type: not_null
+      - name: price
+        description: Price per contract, dollars. Derived as notional / quantity on trades with no recorded price (price_source).
+        data_type: decimal(18,6)
+      - name: price_source
+        description: recorded, or derived_from_estimated_cost.
+        data_type: varchar
+      - name: notional
+        description: quantity x price, dollars (fill_cost without any fee folded into it).
+        data_type: decimal(18,6)
+        constraints:
+          - type: not_null
+      - name: fee
+        description: Trading fee, dollars. NULL where unknown (estimate-cost trades).
+        data_type: decimal(18,6)
+      - name: role
+        description: maker (the bot's quote was accepted) or taker (the taker script accepted another maker's quote).
+        data_type: varchar
+        constraints:
+          - type: not_null
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['maker', 'taker']
+      - name: quote_id
+        description: The accepted quote's id (NULL on poll-discovered trades).
+        data_type: varchar
+      - name: rfq_id
+        description: The RFQ's id (NULL on poll-discovered trades and a few others).
+        data_type: varchar
+      - name: leg_count
+        description: Legs in the contract.
+        data_type: integer
+      - name: is_cost_estimated
+        description: Notional and price come from the bot's cost estimate, not the exchange's fill record.
+        data_type: boolean

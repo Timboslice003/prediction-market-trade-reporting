@@ -1,0 +1,9 @@
+# Core: dbt on DuckDB, the synthetic-data generator (DuckDB only), FIXML (lxml)
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+duckdb==2.0.0
+lxml==6.1.3
+# Orchestration (orchestration/, ORCHESTRATION.md)
+dagster==1.13.30
+dagster-dbt==0.29.30
+dagster-webserver==1.13.30

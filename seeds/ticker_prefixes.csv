@@ -1,0 +1,21 @@
+ticker_prefix,sport,competition,market_type
+BSBML,baseball,Baseball Premier,moneyline
+BSBTOT,baseball,Baseball Premier,total
+BSBSPR,baseball,Baseball Premier,spread
+BSBHR,baseball,Baseball Premier,prop_hr
+BSBRFI,baseball,Baseball Premier,prop_rfi
+BKBML,basketball,Basketball Premier,moneyline
+BKBTOT,basketball,Basketball Premier,total
+BKBPTS,basketball,Basketball Premier,prop_pts
+HCKML,hockey,Hockey Premier,moneyline
+HCKTOT,hockey,Hockey Premier,total
+FTBML,football,Football Premier,moneyline
+FTBTOT,football,Football Premier,total
+FTBSPR,football,Football Premier,spread
+FTBTD,football,Football Premier,prop_td
+SPDML,soccer,Soccer Premier Division,moneyline
+SPDTOT,soccer,Soccer Premier Division,total
+SPDBTTS,soccer,Soccer Premier Division,btts
+SCCML,soccer,Soccer Continental Cup,moneyline
+SCCADV,soccer,Soccer Continental Cup,advance
+TNSML,tennis,Tennis World Tour,moneyline

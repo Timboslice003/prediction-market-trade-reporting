@@ -1,0 +1,47 @@
+# Build selections. The big staging models, fct_rfq_lifecycle and the three
+# monitoring models are tagged `heavy`. On the original (private, real) data
+# they held 100M+ rows each and took hours to rebuild, so the everyday build
+# left them alone. On the synthetic data everything builds in about a minute,
+# and the DEFAULT selector here is `everything`.
+#
+#   dbt build                           -> everything (the default here)
+#   dbt build --selector routine        -> everything except the heavy models
+#   dbt build --selector heavy          -> just the heavy models + their tests
+#   dbt build --selector monitoring     -> the three heavy monitoring models
+#
+# A default selector only applies when no --select / --exclude / --selector
+# is given.
+
+selectors:
+  - name: everything
+    default: true
+    description: Every model, seed, snapshot and test.
+    definition:
+      method: fqn
+      value: "*"
+
+  - name: routine
+    description: Everything except the heavy models and the tests on them.
+    definition:
+      union:
+        - method: fqn
+          value: "*"
+        - exclude:
+            - method: tag
+              value: heavy
+
+  - name: heavy
+    description: The heavy models and their tests, minus the full_rebuild_only ones.
+    definition:
+      union:
+        - method: tag
+          value: heavy
+        - exclude:
+            - method: tag
+              value: full_rebuild_only
+
+  - name: monitoring
+    description: The three heavy monitoring / completeness models and their tests.
+    definition:
+      method: tag
+      value: monitoring

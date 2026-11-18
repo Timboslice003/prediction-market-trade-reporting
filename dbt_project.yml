@@ -1,0 +1,93 @@
+name: pm_reporting
+version: "1.0.0"
+config-version: 2
+profile: pm_reporting
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # The reporting day is a fixed-offset clock (no daylight saving): UTC-5.
+  # Every *_local column and *_date_local date uses it.
+  reporting_utc_offset_hours: -5
+
+  # --- Known history of the source logs (see README "Planted breaks") -------
+  # Two bot processes ran at once in this window and decided the same RFQs.
+  dual_instance_start_utc: '2025-03-07 18:13:00'
+  dual_instance_end_utc: '2025-03-07 18:43:00'
+  # The decision schema changed (old one-row-per-decision schemas ->
+  # rfq_outcome_v1). Old-era decisions carry no quote id; their submission
+  # attempts are linked by time. Attempts recorded before this cutoff are the
+  # old era's.
+  old_era_attempts_before_utc: '2025-03-13 12:00:00'
+  # Before this date only the archive copy of the submission log exists, and
+  # it is missing rows.
+  submission_log_complete_from_date: '2025-03-10'
+  # A logging bug dropped the tail of some hours of the decision log from the
+  # schema cutover until the fix.
+  decision_log_tail_loss_from_date: '2025-03-12'
+  decision_log_tail_loss_until_date: '2025-03-23'
+  tail_loss_fix_deployed_at_utc: '2025-03-24 00:00:00'
+
+  # --- Loss-budget bridge -----------------------------------------------------
+  # The ledger entry being bridged to: the last entry written before this time.
+  loss_budget_bridge_end_before_utc: '2025-03-29 00:00:00'
+
+  # --- RFQ completeness check (recon_rfq_completeness_hourly) ---------------
+  # The window both the exchange's rfq_created event log and the full decision
+  # log cover (local dates 2025-03-17..2025-03-23).
+  completeness_window_start_utc: '2025-03-17 05:00:00'
+  completeness_window_end_utc: '2025-03-24 05:00:00'
+  # An hour missing fewer RFQs than this is 'no_gap_within_tolerance' (edge
+  # effects), never hidden: the count is still shown.
+  completeness_min_gap_rfqs: 2
+  # A tail gap counts as the logging bug when recording resumes within this
+  # many seconds of the next hour starting.
+  completeness_resume_max_sec: 900
+
+  # --- Market-maker monitoring alert thresholds (tune here, not in SQL) ------
+  mm_alert_429_share_max: 0.02            # 429s / quote POSTs
+  mm_alert_rejected_share_max: 0.08       # sent_but_rejected / quoting decisions
+  mm_alert_acceptance_rate_min: 0.12      # matched fills / live quotes (by quote_id)
+  mm_alert_latency_p99_ms_max: 1000       # receipt-to-submit p99, live quotes
+
+  # --- Requester activity: heavy price checker --------------------------------
+  # at least this many RFQs in a week, and fills per RFQ below the ratio
+  requester_price_checker_min_rfqs: 200
+  requester_price_checker_max_fill_ratio: 0.01
+  # SHA-256 of the empty string: the creator_id the exchange sends when an RFQ
+  # has no creator id. mart_requester_activity labels it 'no_creator_id'.
+  empty_creator_id_sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+flags:
+  # Elementary overrides dbt's test materialization to store results and
+  # failing-row samples (in the elementary schema of the DuckDB file).
+  require_explicit_package_overrides_for_builtin_materializations: false
+  send_anonymous_usage_stats: false
+
+models:
+  elementary:
+    +schema: elementary
+  pm_reporting:
+    +materialized: view
+    staging:
+      +schema: staging
+    intermediate:
+      +schema: intermediate
+    marts:
+      +schema: marts
+    # Legacy-script-vs-dbt comparisons and bridges. QA output, not a mart:
+    # kept apart so nothing downstream builds on a model that reads the
+    # legacy script's answer.
+    reconciliation:
+      +schema: reconciliation
+
+data_tests:
+  pm_reporting:
+    +store_failures: false
