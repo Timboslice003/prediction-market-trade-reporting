@@ -27,3 +27,6 @@ edr_target/
 # Local env
 .env
 .env.*
+
+# Review note for the owner: never committed
+PUBLIC_REVIEW.md
