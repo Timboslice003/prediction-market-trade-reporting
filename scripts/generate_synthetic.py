@@ -103,7 +103,7 @@ SURNAMES = ["MORENO", "OKAFOR", "LINDBERG", "TANAKA", "ABARA", "VOSS", "QUINTERO
 SERIES = {
     "BSBML": ("baseball", "moneyline", "team"), "BSBTOT": ("baseball", "total", "number"),
     "BSBSPR": ("baseball", "spread", "team_number"), "BSBHR": ("baseball", "prop_hr", "player"),
-    "BSBRFI": ("baseball", "prop_rfi", "none"),
+    "BSBFIR": ("baseball", "prop_first_inning_run", "none"),
     "BKBML": ("basketball", "moneyline", "team"), "BKBTOT": ("basketball", "total", "number"),
     "BKBPTS": ("basketball", "prop_pts", "player"),
     "HCKML": ("hockey", "moneyline", "team"), "HCKTOT": ("hockey", "total", "number"),
@@ -560,7 +560,7 @@ def decide(g: Gen, rfq, inst, maker_id):
             dec["live_quote_id"] = quote_id
             dec["submitted_at"] = submit_at
     elif stage == "priced_rejected":
-        exit_reason = g.pick(["exposure_cap_game", "exposure_cap_total", "exposure_cap_ticker", "exposure_cap_team"])
+        exit_reason = g.pick(["limit_per_game", "limit_total_open", "limit_per_ticker", "limit_per_team"])
     elif stage == "gated_skipped":
         exit_reason = g.pick(["both_sides_gated", "one_side_gated"])
     elif stage == "breaker_skipped":

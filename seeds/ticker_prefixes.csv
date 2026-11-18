@@ -3,7 +3,7 @@ BSBML,baseball,Baseball Premier,moneyline
 BSBTOT,baseball,Baseball Premier,total
 BSBSPR,baseball,Baseball Premier,spread
 BSBHR,baseball,Baseball Premier,prop_hr
-BSBRFI,baseball,Baseball Premier,prop_rfi
+BSBFIR,baseball,Baseball Premier,prop_first_inning_run
 BKBML,basketball,Basketball Premier,moneyline
 BKBTOT,basketball,Basketball Premier,total
 BKBPTS,basketball,Basketball Premier,prop_pts

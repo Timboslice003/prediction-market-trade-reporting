@@ -18,7 +18,7 @@ x-market-types: &market_types
   - btts
   - advance
   - prop_hr
-  - prop_rfi
+  - prop_first_inning_run
   - prop_pts
   - prop_td
 
@@ -92,7 +92,7 @@ models:
       - name: occurrence_at_local
         description: occurrence_at_utc on the reporting clock (UTC-5).
       - name: selection
-        description: Everything after the matchup, e.g. HAW, TIE, BTTS, 8, HAW2, HAWMORENO12_1. NULL on one-market-per-game series (BSBRFI).
+        description: Everything after the matchup, e.g. HAW, TIE, BTTS, 8, HAW2, HAWMORENO12_1. NULL on one-market-per-game series (BSBFIR).
       - name: selection_subject
         description: The team / player part of the selection (HAW, HAWMORENO12). NULL for a bare number (totals).
       - name: selection_number

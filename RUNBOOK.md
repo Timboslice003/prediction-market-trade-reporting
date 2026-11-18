@@ -1188,7 +1188,7 @@ Then work through `recon_loss_budget_positions`:
 
 #### dim_markets
 
-- **`accepted_values_dim_markets_market_type__moneyline__total__spread__btts__advance__prop_hr__prop_rfi__prop_pts__prop_td`**
+- **`accepted_values_dim_markets_market_type__moneyline__total__spread__btts__advance__prop_hr__prop_first_inning_run__prop_pts__prop_td`**
   - Checks: `market_type` in `dim_markets` takes only the listed values.
   - Severity: error
   - A failure means: A new value appeared: a new bot schema / exchange value / seed label. It must get a rule, never a silent bucket.
@@ -1232,7 +1232,7 @@ Then work through `recon_loss_budget_positions`:
 
 #### fct_fill_legs
 
-- **`accepted_values_fct_fill_legs_market_type__moneyline__total__spread__btts__advance__prop_hr__prop_rfi__prop_pts__prop_td`**
+- **`accepted_values_fct_fill_legs_market_type__moneyline__total__spread__btts__advance__prop_hr__prop_first_inning_run__prop_pts__prop_td`**
   - Checks: `market_type` in `fct_fill_legs` takes only the listed values.
   - Severity: error
   - A failure means: A new value appeared: a new bot schema / exchange value / seed label. It must get a rule, never a silent bucket.

@@ -5,7 +5,7 @@
 -- Ticker shape: {SERIES}.{YYYYMMDD}[T{HHMM}].{MATCHUP}[.{SELECTION}]
 --   BSBML.20250309T1310.HAWOWL.HAW          series, date, time 1310, matchup HAWOWL, selection HAW
 --   SPDML.20250308.ALBBRV.TIE               no time segment
---   BSBRFI.20250309T1310.HAWOWL             no selection (one market per game)
+--   BSBFIR.20250309T1310.HAWOWL             no selection (one market per game)
 --   BSBHR.20250309T1310.HAWOWL.HAWMORENO12_1   selection = subject HAWMORENO12, number 1
 --   BSBSPR.20250309T1310.HAWOWL.HAW2        spread: subject HAW, number 2
 -- Classification comes only from the seed (sport / competition / market_type).
