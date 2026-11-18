@@ -3,8 +3,8 @@
 
   Used by the heavy models (stg_rfq_outcomes, stg_rfq_legs,
   stg_quote_submissions, fct_rfq_lifecycle). DuckDB never shrinks its
-  database file, so rebuilding 100M-row tables inside it made the file grow
-  by tens of GB per rebuild on the original data. These models live at
+  database file, so rebuilding large tables inside it makes the file grow
+  with every rebuild. These models live at
   $DBT_STAGING_PARQUET_ROOT/<model>/data_N.parquet (zstd, default
   work/staging_parquet), and the DuckDB file only holds a view over them:
       create view staging.<model> as select * from read_parquet('<dir>/*.parquet')

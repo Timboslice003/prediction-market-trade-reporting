@@ -71,7 +71,7 @@ def dbt_routine(context: AssetExecutionContext, dbt: DbtCliResource):
     exclude="tag:monitoring",
     name="dbt_heavy",
     dagster_dbt_translator=TRANSLATOR,
-    # No retry: on big data this step is hours long; a blind rerun is not wanted.
+    # No retry: on big data this step is long; a blind rerun is not wanted.
 )
 def dbt_heavy(context: AssetExecutionContext, dbt: DbtCliResource):
     yield from _build(context, dbt)

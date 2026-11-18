@@ -5,7 +5,7 @@
 -- rfq_id, and the likely cause of each hour's gap.
 --
 -- Matching: full outer join on hash(rfq_id) (both sources are unique on
--- rfq_id, tested). Hashing keeps a 100M x 100M join inside memory on big
+-- rfq_id, tested). Hashing keeps a very large join inside memory on big
 -- data; the expected number of 64-bit collisions is negligible. An RFQ's hour
 -- is its exchange creation hour when the event exists, else the bot's
 -- receipt hour.

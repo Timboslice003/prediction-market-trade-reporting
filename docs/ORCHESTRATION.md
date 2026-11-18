@@ -59,9 +59,9 @@ whose selector already runs it.
 - Every job uses the in-process executor: one step at a time, in one
   process. DuckDB allows one writer per file, so no two steps may open it at
   once.
-- On the original data the heavy models held 100M+ rows each, so `routine`
-  read their Parquet through `ref()` and `full_rebuild` (hours) refused to
-  start without an explicit opt-in. Here everything is small, and the
+- On the original data the heavy models were large, so `routine` read their
+  Parquet through `ref()` and `full_rebuild` (slow) refused to start without
+  an explicit opt-in. Here everything is small, and the
   default `dbt build` builds it all.
 
 **Schedule:** `routine_daily` runs the routine job at 06:00 on the reporting
@@ -75,8 +75,7 @@ daily run would change nothing. Turn it on in the UI (Automation →
   (`RetryPolicy(max_retries=1, delay=60)`). The retry is for transient
   failures, such as the DuckDB file being locked by another process. A
   failing data test fails again on the retry; the run then fails. The heavy
-  step has no retry: on big data a blind rerun of an hours-long step is not
-  wanted.
+  step has no retry: on big data a blind rerun of a long step is not wanted.
 - **What a failure does.** A dbt error or an error-severity test failure
   fails the dbt step. Assets downstream of that step, such as the FIXML
   asset, are skipped. Warn-severity tests show as checks that failed with

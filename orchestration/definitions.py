@@ -46,8 +46,8 @@ full_rebuild_job = define_asset_job(
     name="full_rebuild",
     description=(
         "Every model and every test: routine, then heavy, then monitoring. About a minute on "
-        "the synthetic data; on the original data this re-parsed every source log for hours "
-        "and was guarded behind an explicit opt-in."
+        "the synthetic data. On the original data it re-parsed every source log, was slow, and "
+        "was guarded behind an explicit opt-in."
     ),
     selection=AssetSelection.assets(dbt_routine, dbt_heavy, dbt_monitoring, fixml_sample_trade_reports),
     executor_def=in_process_executor,

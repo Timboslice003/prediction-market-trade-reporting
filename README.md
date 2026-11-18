@@ -89,7 +89,7 @@ taker-script ledgers ──┘
   joins, grades or drops real rows. The three largest models use a custom
   materialization (`macros/external_parquet.sql` + a dbt-duckdb plugin) that
   streams them to Parquet outside the DuckDB file: on the original data they
-  held 100M+ rows each, and DuckDB never shrinks its file.
+  were large, and DuckDB never shrinks its file.
 - **Grading** (`int_fill_legs_resolved`, `int_fills_graded`). dbt grades
   every fill on its own, from fill legs and the exchange's market results,
   never from the legacy script's answer. Scalar (fractional) settlements are

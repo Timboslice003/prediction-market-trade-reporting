@@ -132,7 +132,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `event_id` is unique in `stg_events_other`.
   - Severity: error
   - A failure means: `stg_events_other` has duplicate `event_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by event_id having count(*) > 1; on 100M+ rows group on hash(event_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by event_id having count(*) > 1; on very large tables group on hash(event_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_events_other`** (`tests\rowcounts\assert_rowcount_events_other.sql`)
   - Checks: Per source file, staged rows of `events_other` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -152,7 +152,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `rfq_id` is unique in `stg_events_rfq_created`.
   - Severity: error
   - A failure means: `stg_events_rfq_created` has duplicate `rfq_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by rfq_id having count(*) > 1; on 100M+ rows group on hash(rfq_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by rfq_id having count(*) > 1; on very large tables group on hash(rfq_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_events_rfq_created`** (`tests\rowcounts\assert_rowcount_events_rfq_created.sql`)
   - Checks: Per source file, staged rows of `events_rfq_created` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -190,7 +190,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `settlement_id` is unique in `stg_exchange_settlements`.
   - Severity: error
   - A failure means: `stg_exchange_settlements` has duplicate `settlement_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by settlement_id having count(*) > 1; on 100M+ rows group on hash(settlement_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by settlement_id having count(*) > 1; on very large tables group on hash(settlement_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_exchange_settlements`** (`tests\rowcounts\assert_rowcount_exchange_settlements.sql`)
   - Checks: Per source file, staged rows of `exchange_settlements` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -252,7 +252,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_leg_id` is unique in `stg_fill_legs`.
   - Severity: error
   - A failure means: `stg_fill_legs` has duplicate `fill_leg_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on 100M+ rows group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on very large tables group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_leg_ticker_prefixes_in_seed`** (`tests\marts\assert_leg_ticker_prefixes_in_seed.sql`)
   - Checks: Stores (warn) every leg ticker prefix that is not in seeds/ticker_prefixes.csv.
@@ -308,7 +308,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `stg_fills`.
   - Severity: error
   - A failure means: `stg_fills` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_fills_settled`** (`tests\rowcounts\assert_rowcount_fills_settled.sql`)
   - Checks: Per source file, staged rows of `fills_settled` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -352,7 +352,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_record_id` is unique in `stg_fills_raw`.
   - Severity: error
   - A failure means: `stg_fills_raw` has duplicate `fill_record_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_record_id having count(*) > 1; on 100M+ rows group on hash(fill_record_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_record_id having count(*) > 1; on very large tables group on hash(fill_record_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_fills_raw_channel_duplicates`** (`tests\fills\assert_fills_raw_channel_duplicates.sql`)
   - Checks: Stores (warn) every trade the raw fill log recorded twice (REST poll, then websocket).
@@ -402,7 +402,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `ledger_entry_id` is unique in `stg_loss_budget`.
   - Severity: error
   - A failure means: `stg_loss_budget` has duplicate `ledger_entry_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by ledger_entry_id having count(*) > 1; on 100M+ rows group on hash(ledger_entry_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by ledger_entry_id having count(*) > 1; on very large tables group on hash(ledger_entry_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_loss_budget`** (`tests\rowcounts\assert_rowcount_loss_budget.sql`)
   - Checks: Per source file, staged rows of `loss_budget` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -440,7 +440,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `market_ticker` is unique in `stg_market_results`.
   - Severity: error
   - A failure means: `stg_market_results` has duplicate `market_ticker` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by market_ticker having count(*) > 1; on 100M+ rows group on hash(market_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by market_ticker having count(*) > 1; on very large tables group on hash(market_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_market_results`** (`tests\rowcounts\assert_rowcount_market_results.sql`)
   - Checks: Per source file, staged rows of `market_results` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -478,7 +478,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `stg_python_graded`.
   - Severity: error
   - A failure means: `stg_python_graded` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_python_totals_match_expected`** (`tests\fills\assert_python_totals_match_expected.sql`)
   - Checks: The legacy Python script's baseline totals (cost, revenue, realized P&L, fees) are the known figures.
@@ -528,7 +528,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `submission_id` is unique in `stg_quote_submissions`.
   - Severity: error
   - A failure means: `stg_quote_submissions` has duplicate `submission_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by submission_id having count(*) > 1; on 100M+ rows group on hash(submission_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by submission_id having count(*) > 1; on very large tables group on hash(submission_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_quote_submissions`** (`tests\rowcounts\assert_rowcount_quote_submissions.sql`)
   - Checks: Per source file, staged rows of `quote_submissions` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -622,7 +622,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `rfq_outcome_id` is unique in `stg_rfq_outcomes`.
   - Severity: error
   - A failure means: `stg_rfq_outcomes` has duplicate `rfq_outcome_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by rfq_outcome_id having count(*) > 1; on 100M+ rows group on hash(rfq_outcome_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by rfq_outcome_id having count(*) > 1; on very large tables group on hash(rfq_outcome_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rfq_legs_match_outcome_leg_counts`** (`tests\rfq\assert_rfq_legs_match_outcome_leg_counts.sql`)
   - Checks: Cheap stand-in for unique(rfq_outcome_id, leg_index) on stg_rfq_legs: every outcome's legs are exactly 1..len(legs) (count, min, max, sum agree).
@@ -666,7 +666,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `rfq_id` is unique in `stg_rfq_outcomes_slim`.
   - Severity: error
   - A failure means: `stg_rfq_outcomes_slim` has duplicate `rfq_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by rfq_id having count(*) > 1; on 100M+ rows group on hash(rfq_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by rfq_id having count(*) > 1; on very large tables group on hash(rfq_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_rfq_outcomes_slim`** (`tests\rowcounts\assert_rowcount_rfq_outcomes_slim.sql`)
   - Checks: Per source file, staged rows of `rfq_outcomes_slim` + rows excluded for `_parse_error` equal the extract manifest's `rows_written` (`manifest_rowcount_reconciliation`).
@@ -704,7 +704,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `taker_log_id` is unique in `stg_taker_log`.
   - Severity: error
   - A failure means: `stg_taker_log` has duplicate `taker_log_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by taker_log_id having count(*) > 1; on 100M+ rows group on hash(taker_log_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by taker_log_id having count(*) > 1; on very large tables group on hash(taker_log_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 #### stg_taker_plays
 
@@ -754,7 +754,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `taker_play_id` is unique in `stg_taker_plays`.
   - Severity: error
   - A failure means: `stg_taker_plays` has duplicate `taker_play_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by taker_play_id having count(*) > 1; on 100M+ rows group on hash(taker_play_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by taker_play_id having count(*) > 1; on very large tables group on hash(taker_play_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rowcount_taker`** (`tests\rowcounts\assert_rowcount_taker.sql`)
   - Checks: The taker ledgers stage exactly the rows of their files (plays: data rows; log: lines), per strategy.
@@ -812,7 +812,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `settlement_id` is unique in `int_exchange_settlements_attributed`.
   - Severity: error
   - A failure means: `int_exchange_settlements_attributed` has duplicate `settlement_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by settlement_id having count(*) > 1; on 100M+ rows group on hash(settlement_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by settlement_id having count(*) > 1; on very large tables group on hash(settlement_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_exchange_settlements_unexplained`** (`tests\settlement\assert_exchange_settlements_unexplained.sql`)
   - Checks: Stores (warn) every exchange settlement row no attribution rule explains.
@@ -856,7 +856,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_leg_id` is unique in `int_fill_legs_resolved`.
   - Severity: error
   - A failure means: `int_fill_legs_resolved` has duplicate `fill_leg_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on 100M+ rows group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on very large tables group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 #### int_fill_positions
 
@@ -882,7 +882,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `position_id` is unique in `int_fill_positions`.
   - Severity: error
   - A failure means: `int_fill_positions` has duplicate `position_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by position_id having count(*) > 1; on 100M+ rows group on hash(position_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by position_id having count(*) > 1; on very large tables group on hash(position_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 #### int_fills_graded
 
@@ -920,7 +920,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `int_fills_graded`.
   - Severity: error
   - A failure means: `int_fills_graded` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_int_fills_graded_rowcount_expected`** (`tests\fills\assert_int_fills_graded_rowcount_expected.sql`)
   - Checks: int_fills_graded has exactly the fills of the settled file (the generator's count).
@@ -958,7 +958,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `int_fills_origin`.
   - Severity: error
   - A failure means: `int_fills_origin` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_taker_fills_identified`** (`tests\fills\assert_taker_fills_identified.sql`)
   - Checks: int_fills_origin finds exactly the planted taker-script fills and the one self-trade lookalike.
@@ -996,13 +996,13 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `ledger_entry_id` is unique in `int_loss_budget_ledger`.
   - Severity: error
   - A failure means: `int_loss_budget_ledger` has duplicate `ledger_entry_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by ledger_entry_id having count(*) > 1; on 100M+ rows group on hash(ledger_entry_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by ledger_entry_id having count(*) > 1; on very large tables group on hash(ledger_entry_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`unique_int_loss_budget_ledger_ledger_seq`**
   - Checks: `ledger_seq` is unique in `int_loss_budget_ledger`.
   - Severity: error
   - A failure means: `int_loss_budget_ledger` has duplicate `ledger_seq` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by ledger_seq having count(*) > 1; on 100M+ rows group on hash(ledger_seq)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by ledger_seq having count(*) > 1; on very large tables group on hash(ledger_seq)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_loss_budget_window_sums_to_cumulative`** (`tests\settlement\assert_loss_budget_window_sums_to_cumulative.sql`)
   - Checks: Inside the bridge window the ledger's cumulative equals the running sum of pnl, and the bridged entry's cumulative is the known target.
@@ -1036,7 +1036,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `recon_fills_python_vs_dbt`.
   - Severity: error
   - A failure means: `recon_fills_python_vs_dbt` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_recon_no_unexplained_mismatches`** (`tests\fills\assert_recon_no_unexplained_mismatches.sql`)
   - Checks: Every fill where dbt and the legacy script disagree falls in a named mismatch_category.
@@ -1068,7 +1068,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `step_order` is unique in `recon_loss_budget_bridge`.
   - Severity: error
   - A failure means: `recon_loss_budget_bridge` has duplicate `step_order` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by step_order having count(*) > 1; on 100M+ rows group on hash(step_order)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by step_order having count(*) > 1; on very large tables group on hash(step_order)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_loss_budget_bridge_ties`** (`tests\settlement\assert_loss_budget_bridge_ties.sql`)
   - Checks: The waterfall's start + items (remainder included) equals the ledger figure, to the cent.
@@ -1106,7 +1106,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `position_id` is unique in `recon_loss_budget_positions`.
   - Severity: error
   - A failure means: `recon_loss_budget_positions` has duplicate `position_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by position_id having count(*) > 1; on 100M+ rows group on hash(position_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by position_id having count(*) > 1; on very large tables group on hash(position_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_bot_positions_never_reconciled`** (`tests\settlement\assert_bot_positions_never_reconciled.sql`)
   - Checks: Stores (warn) every bot position the exchange settled but the reconciler never booked.
@@ -1138,7 +1138,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `hour_utc` is unique in `recon_rfq_completeness_hourly`.
   - Severity: error
   - A failure means: `recon_rfq_completeness_hourly` has duplicate `hour_utc` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by hour_utc having count(*) > 1; on 100M+ rows group on hash(hour_utc)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by hour_utc having count(*) > 1; on very large tables group on hash(hour_utc)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_rfq_completeness_gaps_for_review`** (`tests\reconciliation\assert_rfq_completeness_gaps_for_review.sql`)
   - Checks: Stores (warn) every completeness-window hour where the bot recorded fewer RFQs than the exchange sent, with its likely_cause.
@@ -1178,7 +1178,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `combo_ticker` is unique in `dim_combos`.
   - Severity: error
   - A failure means: `dim_combos` has duplicate `combo_ticker` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by combo_ticker having count(*) > 1; on 100M+ rows group on hash(combo_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by combo_ticker having count(*) > 1; on very large tables group on hash(combo_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_same_game_flag_agrees`** (`tests\marts\assert_same_game_flag_agrees.sql`)
   - Checks: Stores (warn) combos where the bot's same-game flag disagrees with the ticker-based one.
@@ -1222,7 +1222,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `market_ticker` is unique in `dim_markets`.
   - Severity: error
   - A failure means: `dim_markets` has duplicate `market_ticker` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by market_ticker having count(*) > 1; on 100M+ rows group on hash(market_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by market_ticker having count(*) > 1; on very large tables group on hash(market_ticker)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_every_mart_column_documented`** (`tests\marts\assert_every_mart_column_documented.sql`)
   - Checks: Every column of every non-heavy mart has a YAML description.
@@ -1278,7 +1278,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_leg_id` is unique in `fct_fill_legs`.
   - Severity: error
   - A failure means: `fct_fill_legs` has duplicate `fill_leg_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on 100M+ rows group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_leg_id having count(*) > 1; on very large tables group on hash(fill_leg_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 #### fct_fills
 
@@ -1340,7 +1340,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `fill_id` is unique in `fct_fills`.
   - Severity: error
   - A failure means: `fct_fills` has duplicate `fill_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on 100M+ rows group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by fill_id having count(*) > 1; on very large tables group on hash(fill_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_fills_for_matches_direct_query`** (`tests\marts\assert_fills_for_matches_direct_query.sql`)
   - Checks: The fills_for macro returns exactly what a hand-written Continental Cup query returns, at both grains, and the question is not empty.
@@ -1402,7 +1402,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `rfq_outcome_id` is unique in `fct_rfq_lifecycle`.
   - Severity: error (tag full_rebuild_only: excluded from the heavy selector; runs in the default build)
   - A failure means: `fct_rfq_lifecycle` has duplicate `rfq_outcome_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by rfq_outcome_id having count(*) > 1; on 100M+ rows group on hash(rfq_outcome_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by rfq_outcome_id having count(*) > 1; on very large tables group on hash(rfq_outcome_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_every_heavy_mart_column_documented`** (`tests\marts\assert_every_heavy_mart_column_documented.sql`)
   - Checks: Every column of fct_rfq_lifecycle and the two monitoring marts has a YAML description.
@@ -1470,7 +1470,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `daily_pnl_id` is unique in `mart_daily_pnl`.
   - Severity: error
   - A failure means: `mart_daily_pnl` has duplicate `daily_pnl_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by daily_pnl_id having count(*) > 1; on 100M+ rows group on hash(daily_pnl_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by daily_pnl_id having count(*) > 1; on very large tables group on hash(daily_pnl_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_daily_pnl_identity`** (`tests\marts\assert_daily_pnl_identity.sql`)
   - Checks: On every mart_daily_pnl row gross = net + fees outside cost + gross of unknown-fee fills; fills sum to fct_fills.
@@ -1490,7 +1490,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `trade_id` is unique in `mart_daily_trade_report`.
   - Severity: error
   - A failure means: `mart_daily_trade_report` has duplicate `trade_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by trade_id having count(*) > 1; on 100M+ rows group on hash(trade_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by trade_id having count(*) > 1; on very large tables group on hash(trade_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_daily_trade_report_rowcount_matches_fills`** (`tests\marts\assert_daily_trade_report_rowcount_matches_fills.sql`)
   - Checks: mart_daily_trade_report has exactly one row per fct_fills fill.
@@ -1528,7 +1528,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `date_local` is unique in `mart_market_maker_monitoring`.
   - Severity: error
   - A failure means: `mart_market_maker_monitoring` has duplicate `date_local` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by date_local having count(*) > 1; on 100M+ rows group on hash(date_local)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by date_local having count(*) > 1; on very large tables group on hash(date_local)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 #### mart_requester_activity
 
@@ -1554,7 +1554,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `requester_week_id` is unique in `mart_requester_activity`.
   - Severity: error
   - A failure means: `mart_requester_activity` has duplicate `requester_week_id` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by requester_week_id having count(*) > 1; on 100M+ rows group on hash(requester_week_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by requester_week_id having count(*) > 1; on very large tables group on hash(requester_week_id)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 - **`assert_requester_empty_creator_id_labelled`** (`tests\marts\assert_requester_empty_creator_id_labelled.sql`)
   - Checks: creator_id e3b0c442...b855 (var empty_creator_id_sha256) really is SHA-256 of the empty string; every mart_requester_activity row with it is labelled 'no_creator_id' and never flagged as a price checker; no other row has that label; and the label exists.
@@ -1594,7 +1594,7 @@ Then work through `recon_loss_budget_positions`:
   - Checks: `ticker_prefix` is unique in `ticker_prefixes`.
   - Severity: error
   - A failure means: `ticker_prefixes` has duplicate `ticker_prefix` values: a fan-out join, a source re-delivery, or a grain change.
-  - First checks: (1) Find the duplicated keys (group by ticker_prefix having count(*) > 1; on 100M+ rows group on hash(ticker_prefix)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
+  - First checks: (1) Find the duplicated keys (group by ticker_prefix having count(*) > 1; on very large tables group on hash(ticker_prefix)). (2) Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window). (3) Check the model's joins for a many-to-one that became many-to-many.
 
 ### Snapshots (1 tests)
 

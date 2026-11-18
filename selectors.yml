@@ -1,8 +1,8 @@
 # Build selections. The big staging models, fct_rfq_lifecycle and the three
 # monitoring models are tagged `heavy`. On the original (private, real) data
-# they held 100M+ rows each and took hours to rebuild, so the everyday build
-# left them alone. On the synthetic data everything builds in about a minute,
-# and the DEFAULT selector here is `everything`.
+# they were large and slow to rebuild, so the everyday build left them alone.
+# On the synthetic data everything builds in about a minute, and the DEFAULT
+# selector here is `everything`.
 #
 #   dbt build                           -> everything (the default here)
 #   dbt build --selector routine        -> everything except the heavy models

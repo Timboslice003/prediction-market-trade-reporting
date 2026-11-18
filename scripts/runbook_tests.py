@@ -392,7 +392,7 @@ GENERIC: dict[str, tuple[str, str, list[str]]] = {
         "`{col}` is unique in `{model}`.",
         "`{model}` has duplicate `{col}` values: a fan-out join, a source re-delivery, or a grain change.",
         [
-            "Find the duplicated keys (group by {col} having count(*) > 1; on 100M+ rows group on hash({col})).",
+            "Find the duplicated keys (group by {col} having count(*) > 1; on very large tables group on hash({col})).",
             "Compare the duplicate rows' payloads: identical = true duplicate, different = a real repeat (e.g. the dual-instance window).",
             "Check the model's joins for a many-to-one that became many-to-many.",
         ],
