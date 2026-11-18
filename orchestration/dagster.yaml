@@ -1,0 +1,6 @@
+# Dagster instance config. Copy to $DAGSTER_HOME (e.g. work/dagster/),
+# Dagster reads dagster.yaml from DAGSTER_HOME only.
+# With no storage keys, runs, event logs, schedules and compute logs all go
+# under DAGSTER_HOME (SQLite), never into tracked files.
+telemetry:
+  enabled: false
