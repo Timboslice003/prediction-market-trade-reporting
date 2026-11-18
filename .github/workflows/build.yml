@@ -1,0 +1,77 @@
+# On every push: install, generate the synthetic data, build and test every
+# dbt model, render and validate the FIXML samples, run the Dagster routine
+# job, generate the dbt docs site and the Elementary report, and publish both
+# to GitHub Pages (dbt docs at /, Elementary at /elementary/).
+#
+# PREPARED, NOT ENABLED: GitHub Pages must be switched on for the repository
+# (Settings -> Pages -> Source: GitHub Actions) before the deploy job can run.
+
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-edr.txt
+
+      - name: Install (project venv + separate Elementary CLI venv)
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+          python -m venv .venv-edr
+          .venv-edr/bin/pip install -r requirements-edr.txt
+
+      - name: Generate, build, test, FIXML, Dagster, docs, Elementary
+        run: .venv/bin/python scripts/run_all.py --site work/site
+
+      - name: Leak scan (generic patterns; the private term list never leaves the owner's machine)
+        run: .venv/bin/python scripts/leak_scan.py --extra-dir work/fixml
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-logs
+          path: |
+            work/run_*.log
+            work/timings.json
+          if-no-files-found: ignore
+
+      - name: Upload the site for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: work/site
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

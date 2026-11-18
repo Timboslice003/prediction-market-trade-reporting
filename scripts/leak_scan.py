@@ -1,6 +1,9 @@
 """Leak scan: prove the public copy carries nothing from the private original.
 
-    python scripts/leak_scan.py --terms-file PATH [--extra-dir DIR ...] [--duckdb PATH] [--report FILE]
+    python scripts/leak_scan.py [--terms-file PATH] [--extra-dir DIR ...] [--duckdb PATH] [--report FILE]
+
+Without --terms-file only the generic patterns run (that is what CI does: the
+term list is private and never leaves the owner's machine).
 
 What it scans
   * every file git would publish (tracked + untracked-not-ignored), text and binary;
@@ -132,18 +135,18 @@ def scan_duckdb(path, terms, hits):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--terms-file", required=True)
+    ap.add_argument("--terms-file")
     ap.add_argument("--extra-dir", action="append", default=[])
     ap.add_argument("--duckdb")
     ap.add_argument("--report")
     a = ap.parse_args()
-    terms = load_terms(a.terms_file)
+    terms = load_terms(a.terms_file) if a.terms_file else ({}, {}, [], [])
     cats = terms[0]
     hits = defaultdict(list)
 
     files = publishable_files()
     for f in files:
-        if f.resolve() == Path(a.terms_file).resolve():
+        if a.terms_file and f.resolve() == Path(a.terms_file).resolve():
             sys.exit("the terms file is inside the repo and would be published: move it out")
         data = f.read_bytes()[:TEXT_LIMIT]
         scan_bytes(data, str(f.relative_to(ROOT)), terms, hits)
