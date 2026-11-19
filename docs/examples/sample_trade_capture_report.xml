@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<FIXML xmlns="http://www.fixprotocol.org/FIXML-Latest" v="FIX.Latest" xv="309">
+  <Batch ID="TCR-SAMPLE-20250310" TotMsg="5">
+    <Hdr SID="PLACEHOLDER_SENDER_ID" TID="CFTC" Snt="2025-03-11T11:00:00.000000Z"/>
+    <TrdCaptRpt RptID="37ac40f3-47bb-4566-b828-e5888b14f876" TrdID="37ac40f3-47bb-4566-b828-e5888b14f876" MtchID="37ac40f3-47bb-4566-b828-e5888b14f876" TransTyp="0" RptTyp="0" LastQty="6.79" LastPx="0.110000" PxTyp="2" Ccy="USD" TrdDt="2025-03-10" MLegRptTyp="1" TxnTm="2025-03-10T06:44:17.953348Z" GrossTrdAmt="0.746900">
+      <Instrmt Sym="CMB.6F3D2896F078"/>
+      <RptSide Side="1" AgrsrInd="N" Txt="rfq_id=99225edb-8018-4c3c-8053-594ebd53071a">
+        <MiscFees Amt="0.040000" Curr="USD" Typ="4" Basis="0"/>
+        <TrdRptOrdDetl OrdID="1c6d6492-ed3d-4723-8f79-f39e56d94938" RefOrdID="9c8024da-b879-4c8d-be23-422a566319ea" RefOrdIDSrc="5"/>
+      </RptSide>
+    </TrdCaptRpt>
+    <TrdCaptRpt RptID="c490d894-566f-4161-a232-dd956cfa30b7" TrdID="c490d894-566f-4161-a232-dd956cfa30b7" MtchID="c490d894-566f-4161-a232-dd956cfa30b7" TransTyp="0" RptTyp="0" LastQty="117.98" LastPx="0.220000" PxTyp="2" Ccy="USD" TrdDt="2025-03-10" MLegRptTyp="1" TxnTm="2025-03-10T11:07:16.296336Z" GrossTrdAmt="25.955600">
+      <Instrmt Sym="CMB.2120FADA00E1"/>
+      <RptSide Side="1" AgrsrInd="N" Txt="rfq_id=4563ea74-8728-4f6c-b5a7-06d9706e9efc">
+        <MiscFees Amt="0.480000" Curr="USD" Typ="4" Basis="0"/>
+        <TrdRptOrdDetl OrdID="b323f528-771d-481e-a47e-9f71ef6d89da" RefOrdID="1e86c0c6-d9b4-4561-9455-95b1ee2a23b1" RefOrdIDSrc="5"/>
+      </RptSide>
+    </TrdCaptRpt>
+    <TrdCaptRpt RptID="546fb56d-fa8a-452c-a7ed-1a992abfc5d7" TrdID="546fb56d-fa8a-452c-a7ed-1a992abfc5d7" MtchID="546fb56d-fa8a-452c-a7ed-1a992abfc5d7" TransTyp="0" RptTyp="0" LastQty="207.17" LastPx="0.090000" PxTyp="2" Ccy="USD" TrdDt="2025-03-10" MLegRptTyp="1" TxnTm="2025-03-10T14:59:17.654697Z" GrossTrdAmt="188.524700">
+      <Instrmt Sym="CMB.1985B5588D4F"/>
+      <RptSide Side="2" AgrsrInd="N" Txt="fee=unknown;cost_estimated=Y">
+        <TrdRptOrdDetl OrdID="0f77c4f7-c351-4d82-8be7-94069bd2b13d"/>
+      </RptSide>
+    </TrdCaptRpt>
+    <TrdCaptRpt RptID="45da5c07-ac27-4cf7-9384-e7767cd26f30" TrdID="45da5c07-ac27-4cf7-9384-e7767cd26f30" MtchID="45da5c07-ac27-4cf7-9384-e7767cd26f30" TransTyp="0" RptTyp="0" LastQty="144.91" LastPx="0.360000" PxTyp="2" Ccy="USD" TrdDt="2025-03-10" MLegRptTyp="1" TxnTm="2025-03-10T19:53:31.057514Z" GrossTrdAmt="52.167600">
+      <Instrmt Sym="CMB.5D28F3EAB363"/>
+      <RptSide Side="1" AgrsrInd="Y">
+        <MiscFees Amt="0.590000" Curr="USD" Typ="4" Basis="0"/>
+        <TrdRptOrdDetl OrdID="772745d5-9c65-464d-9f7f-01a4329a95fa"/>
+      </RptSide>
+    </TrdCaptRpt>
+    <TrdCaptRpt RptID="e45e73d7-3c37-4041-aff2-8ee17229bc85" TrdID="e45e73d7-3c37-4041-aff2-8ee17229bc85" MtchID="e45e73d7-3c37-4041-aff2-8ee17229bc85" TransTyp="0" RptTyp="0" LastQty="320.24" LastPx="0.110000" PxTyp="2" Ccy="USD" TrdDt="2025-03-10" MLegRptTyp="1" TxnTm="2025-03-10T23:11:24.097732Z" GrossTrdAmt="285.013600">
+      <Instrmt Sym="CMB.F3678B99CFBA"/>
+      <RptSide Side="2" AgrsrInd="N" Txt="rfq_id=aa91a015-624e-451d-9a80-79f94d8eb069">
+        <MiscFees Amt="1.290000" Curr="USD" Typ="4" Basis="0"/>
+        <TrdRptOrdDetl OrdID="11412e33-19ab-4580-9ba1-fabc418030d8" RefOrdID="1d62853b-2906-4b81-8d3c-272b8aebb833" RefOrdIDSrc="5"/>
+      </RptSide>
+    </TrdCaptRpt>
+  </Batch>
+</FIXML>

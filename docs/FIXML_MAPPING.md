@@ -5,6 +5,11 @@
 date. `scripts/check_fixml.py` validates the files against the FIXML schema
 and round-trips them against the mart.
 
+**See one:** [`docs/examples/sample_trade_capture_report.xml`](examples/sample_trade_capture_report.xml)
+is a five-trade sample (synthetic), with
+[a note on which trade shows which case](examples/README.md). CI re-renders
+it on every push and round-trips it against the mart.
+
 ## What this is, and what it is not
 
 - **The rule.** CFTC Rule 16.02 requires designated contract markets to file

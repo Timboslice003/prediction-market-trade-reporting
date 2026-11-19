@@ -9,6 +9,10 @@ Steps (each must succeed; the script stops at the first failure):
   4. fixml schema  scripts/fetch_fixml_schema.py (skipped if already present)
   5. fixml render  scripts/render_fixml.py -> work/fixml
   6. fixml check   scripts/check_fixml.py (schema validation + round trip)
+  6b. fixml example  re-render docs/examples/sample_trade_capture_report.xml
+                   from this build into work/ and require it byte-identical to
+                   the committed file, then check the committed file
+                   (check_fixml.py --file: schema + round trip)
 --no-fixml-schema (what CI uses) skips step 4 and the schema half of step 6
 (also inside the Dagster asset check): the round trip still runs. The schema
 is a third-party download, so validation against it is a local step.
@@ -32,6 +36,18 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# The committed FIXML example (docs/examples/README.md says which trade shows which case).
+EXAMPLE = "docs/examples/sample_trade_capture_report.xml"
+EXAMPLE_DATE = "2025-03-10"
+EXAMPLE_CREATED_AT = "2025-03-11T11:00:00Z"
+EXAMPLE_IDS = ",".join([
+    "c490d894-566f-4161-a232-dd956cfa30b7",   # YES buy
+    "e45e73d7-3c37-4041-aff2-8ee17229bc85",   # NO buy
+    "37ac40f3-47bb-4566-b828-e5888b14f876",   # scalar-settled combo
+    "546fb56d-fa8a-452c-a7ed-1a992abfc5d7",   # unknown fee, estimated cost
+    "45da5c07-ac27-4cf7-9384-e7767cd26f30",   # taker-script fill
+])
 BIN = Path(sys.executable).parent
 EXE = ".exe" if os.name == "nt" else ""
 
@@ -78,6 +94,10 @@ def main():
         ("fixml schema", [py, "scripts/fetch_fixml_schema.py"]),
         ("fixml render", [py, "scripts/render_fixml.py"]),
         ("fixml check", [py, "scripts/check_fixml.py"]),
+        ("fixml example render", [py, "scripts/render_fixml.py", "--dates", EXAMPLE_DATE,
+                                  "--trade-ids", EXAMPLE_IDS, "--created-at", EXAMPLE_CREATED_AT,
+                                  "--out-file", "work/fixml_example/sample_trade_capture_report.xml"]),
+        ("fixml example check", [py, "scripts/check_fixml.py", "--file", EXAMPLE]),
         ("dagster validate", [tool("dagster"), "definitions", "validate", "-m", "orchestration.definitions"]),
         ("dagster routine job", [tool("dagster"), "job", "execute", "-m", "orchestration.definitions", "-j", "routine"]),
         ("dbt docs", [tool("dbt"), "docs", "generate", "--static"]),
@@ -110,6 +130,14 @@ def main():
         secs = round(time.perf_counter() - t0, 1)
         tail = log.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-3:]
         print("\n".join(tail))
+        if name == "fixml example render" and proc.returncode == 0:
+            fresh = (work / "fixml_example" / "sample_trade_capture_report.xml").read_bytes()
+            if fresh != (ROOT / EXAMPLE).read_bytes():
+                print(f"{EXAMPLE} differs from a fresh render (work/fixml_example/): "
+                      "regenerate it with the command in docs/examples/README.md")
+                proc.returncode = 1
+            else:
+                print(f"{EXAMPLE}: identical to a fresh render")
         timings.append({"step": name, "seconds": secs, "exit_code": proc.returncode})
         if proc.returncode != 0:
             print(f"FAILED: {name} (exit {proc.returncode}); full log: {log}")

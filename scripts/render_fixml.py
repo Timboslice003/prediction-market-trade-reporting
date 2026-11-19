@@ -8,6 +8,7 @@ holding one TrdCaptRpt per sampled trade.
 
     python scripts/render_fixml.py [--db PATH] [--out-dir DIR]
         [--dates 2025-03-11,2025-03-18] [--per-date 20] [--created-at ISO]
+    python scripts/render_fixml.py --dates 2025-03-10 --trade-ids ID,ID,...         --out-file PATH --created-at ISO        # one hand-picked file, no manifest
 
 Output goes to work/fixml/ by default (git-ignored). Field mapping and every
 convention: docs/FIXML_MAPPING.md. Validation and the round-trip check:
@@ -178,7 +179,7 @@ def trade_capture_report(batch, r):
       RefOrdID=r["quote_id"], RefOrdIDSrc="5" if r["quote_id"] else None)
 
 
-def render(con, trade_date, trade_ids, created_at, out_dir):
+def render(con, trade_date, trade_ids, created_at, out_dir, out_file=None):
     ph = ",".join("?" * len(trade_ids))
     cur = con.execute(f"select * from ({BASE_SQL}) b where trade_id in ({ph}) "
                       f"order by execution_time_utc, trade_id", trade_ids)
@@ -190,7 +191,7 @@ def render(con, trade_date, trade_ids, created_at, out_dir):
     E(batch, "Hdr", SID=SENDER_PLACEHOLDER, TID=TARGET, Snt=ts(created_at))
     for r in rows:
         trade_capture_report(batch, r)
-    path = os.path.join(out_dir, f"trade_capture_{trade_date:%Y%m%d}.fixml.xml")
+    path = out_file or os.path.join(out_dir, f"trade_capture_{trade_date:%Y%m%d}.fixml.xml")
     etree.ElementTree(root).write(path, xml_declaration=True, encoding="UTF-8", pretty_print=True)
     return path, len(rows)
 
@@ -202,6 +203,9 @@ def main():
     ap.add_argument("--dates", help="comma-separated YYYY-MM-DD; default: the selection rule")
     ap.add_argument("--per-date", type=int, default=20)
     ap.add_argument("--created-at", help="ISO UTC time for Hdr/@Snt; default: now")
+    ap.add_argument("--trade-ids", help="comma-separated trade ids (needs exactly one --dates): "
+                    "render just these, to --out-file, and write no selection manifest")
+    ap.add_argument("--out-file", help="with --trade-ids: the file to write")
     a = ap.parse_args()
 
     out_dir = os.path.abspath(a.out_dir)
@@ -212,6 +216,19 @@ def main():
                   else dt.datetime.now(dt.timezone.utc).replace(tzinfo=None))
 
     con = duckdb.connect(a.db, read_only=True)
+    if a.trade_ids:
+        if not a.dates or "," in a.dates or not a.out_file:
+            sys.exit("--trade-ids needs exactly one --dates and --out-file")
+        d = dt.date.fromisoformat(a.dates)
+        ids = [t.strip() for t in a.trade_ids.split(",") if t.strip()]
+        on_date = {r[0] for r in con.execute(
+            "select trade_id from marts.mart_daily_trade_report where trade_date = ?", [d]).fetchall()}
+        if not set(ids) <= on_date:
+            sys.exit(f"not trades on {d}: {sorted(set(ids) - on_date)}")
+        os.makedirs(os.path.dirname(os.path.abspath(a.out_file)), exist_ok=True)
+        path, n = render(con, d, ids, created_at, out_dir, out_file=a.out_file)
+        print(f"{d}  {n:>3} hand-picked trades  -> {path}")
+        return
     dates = ([dt.date.fromisoformat(d) for d in a.dates.split(",")] if a.dates
              else choose_dates(con))
     manifest = {"created_at_utc": ts(created_at), "per_date": a.per_date,

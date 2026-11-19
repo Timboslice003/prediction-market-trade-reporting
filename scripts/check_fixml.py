@@ -1,6 +1,6 @@
 """Validate the sample FIXML files and round-trip them against the mart.
 
-    python scripts/check_fixml.py [--fixml-dir DIR]
+    python scripts/check_fixml.py [--fixml-dir DIR | --file PATH]
         [--schema PATH/fixml-main-Latest.xsd | --skip-schema] [--db PATH]
 
 1. Schema: every file must validate against the FIXML schema given by
@@ -20,6 +20,10 @@
    mart_daily_trade_report (and fct_fills for order_id) EXACTLY, that the
    file holds exactly the trades in selection_manifest.json, and that
    Batch/@TotMsg equals the number of messages.
+   With --file (a single hand-picked file, e.g. docs/examples/
+   sample_trade_capture_report.xml) there is no selection manifest: the check
+   is instead that every TrdID is unique, exists in the mart, and falls on
+   the Batch's one trade date; every other check is the same.
 Exit 0 only when everything passes.
 """
 import argparse
@@ -55,17 +59,23 @@ def main():
     ap.add_argument("--fixml-dir", default=os.environ.get("PM_FIXML_DIR", "work/fixml"))
     ap.add_argument("--schema", default=os.environ.get(
         "PM_FIXML_SCHEMA", "work/fixml_schema/latest_ep309_patched/fixml-main-Latest.xsd"))
+    ap.add_argument("--file", help="check this one file instead of --fixml-dir (no manifest)")
     ap.add_argument("--skip-schema", action="store_true",
                     default=os.environ.get("PM_FIXML_SKIP_SCHEMA", "") == "1",
                     help="round trip only; schema validation is a local step")
     ap.add_argument("--db", default=os.environ.get("PM_DUCKDB_PATH", "work/pm_reporting.duckdb"))
     a = ap.parse_args()
 
-    files = sorted(glob.glob(os.path.join(a.fixml_dir, "*.fixml.xml")))
-    if not files:
-        sys.exit("no FIXML files found")
-    with open(os.path.join(a.fixml_dir, "selection_manifest.json"), encoding="utf-8") as fh:
-        manifest = {f["file"]: f for f in json.load(fh)["files"]}
+    if a.file:
+        files, manifest = [a.file], None
+        if not os.path.exists(a.file):
+            sys.exit(f"no such file: {a.file}")
+    else:
+        files = sorted(glob.glob(os.path.join(a.fixml_dir, "*.fixml.xml")))
+        if not files:
+            sys.exit("no FIXML files found")
+        with open(os.path.join(a.fixml_dir, "selection_manifest.json"), encoding="utf-8") as fh:
+            manifest = {f["file"]: f for f in json.load(fh)["files"]}
 
     schema, schema_ok = None, True
     if a.skip_schema:
@@ -105,10 +115,16 @@ def main():
         tcrs = batch.findall(f"{NS}TrdCaptRpt")
         if int(batch.get("TotMsg")) != len(tcrs) or len(batch) - 1 != len(tcrs):
             fail(f"{name}: TotMsg {batch.get('TotMsg')} != {len(tcrs)} messages")
-        expected = {t["trade_id"] for t in manifest[name]["trades"]}
         got = [t.get("TrdID") for t in tcrs]
-        if set(got) != expected or len(got) != len(set(got)):
-            fail(f"{name}: trade set differs from selection_manifest.json")
+        if manifest is not None:
+            expected = {t["trade_id"] for t in manifest[name]["trades"]}
+            if set(got) != expected or len(got) != len(set(got)):
+                fail(f"{name}: trade set differs from selection_manifest.json")
+        else:
+            if not got or len(got) != len(set(got)):
+                fail(f"{name}: empty or repeated TrdIDs")
+            if len({t.get("TrdDt") for t in tcrs}) != 1:
+                fail(f"{name}: trades span more than one trade date")
 
         ph = ",".join("?" * len(got))
         cur = con.execute(

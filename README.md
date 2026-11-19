@@ -10,8 +10,10 @@ trade report, with a test for every way the logs break. Browse the
 [dbt docs site](https://timboslice003.github.io/prediction-market-trade-reporting/)
 and the [Elementary data-quality report](https://timboslice003.github.io/prediction-market-trade-reporting/elementary/);
 then read the [loss-budget bridge model](models/reconciliation/recon_loss_budget_bridge.sql),
-the [planted-breaks table](#planted-breaks-and-what-catches-each), and the
-[FIXML mapping](docs/FIXML_MAPPING.md).
+the [planted-breaks table](#planted-breaks-and-what-catches-each), the
+[FIXML mapping](docs/FIXML_MAPPING.md), and a
+[sample FIXML trade capture report](docs/examples/sample_trade_capture_report.xml)
+([what each trade in it shows](docs/examples/README.md)).
 
 ## Overview
 
