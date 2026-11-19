@@ -1,10 +1,12 @@
 # On every push: install, generate the synthetic data, build and test every
-# dbt model, render and validate the FIXML samples, run the Dagster routine
-# job, generate the dbt docs site and the Elementary report, and publish both
-# to GitHub Pages (dbt docs at /, Elementary at /elementary/).
+# dbt model, render the FIXML samples and round-trip them against the mart,
+# run the Dagster routine job, generate the dbt docs site and the Elementary
+# report, and publish both to GitHub Pages (dbt docs at /, Elementary at
+# /elementary/; Pages source: GitHub Actions).
 #
-# PREPARED, NOT ENABLED: GitHub Pages must be switched on for the repository
-# (Settings -> Pages -> Source: GitHub Actions) before the deploy job can run.
+# FIXML schema validation is NOT run here: the schema is a third-party
+# download that the repo does not redistribute. It is a documented local step
+# (README, docs/FIXML_MAPPING.md).
 
 name: build
 
@@ -41,8 +43,8 @@ jobs:
           python -m venv .venv-edr
           .venv-edr/bin/pip install -r requirements-edr.txt
 
-      - name: Generate, build, test, FIXML, Dagster, docs, Elementary
-        run: .venv/bin/python scripts/run_all.py --site work/site
+      - name: Generate, build, test, FIXML render + round trip, Dagster, docs, Elementary
+        run: .venv/bin/python scripts/run_all.py --no-fixml-schema --site work/site
 
       - name: Leak scan (generic patterns; the private term list never leaves the owner's machine)
         run: .venv/bin/python scripts/leak_scan.py --extra-dir work/fixml

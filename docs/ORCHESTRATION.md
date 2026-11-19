@@ -33,7 +33,8 @@ last section maps every piece to Airflow.
    `fixml_sample_trade_reports` runs `scripts/render_fixml.py` after
    `mart_daily_trade_report` and `fct_fills`. Its check
    `fixml_valid_and_round_trips` runs `scripts/check_fixml.py`: schema
-   validation plus the exact round trip against the mart.
+   validation plus the exact round trip against the mart (round trip only
+   when `PM_FIXML_SKIP_SCHEMA=1`, as in CI; see docs/FIXML_MAPPING.md).
 
 Why the three dbt definitions must each run whole: when a job runs a
 definition in full, dagster-dbt hands dbt that definition's own selection

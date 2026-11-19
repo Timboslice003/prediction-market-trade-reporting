@@ -1,5 +1,20 @@
 # Prediction-market trade reporting on dbt + DuckDB
 
+[![build](https://github.com/Timboslice003/prediction-market-trade-reporting/actions/workflows/build.yml/badge.svg)](https://github.com/Timboslice003/prediction-market-trade-reporting/actions/workflows/build.yml)
+
+## Start here
+
+A regulatory-reporting pipeline that turns a trading bot's messy logs into
+graded fills, P&L that reconciles to the cent, and a contract-enforced daily
+trade report, with a test for every way the logs break. Browse the
+[dbt docs site](https://timboslice003.github.io/prediction-market-trade-reporting/)
+and the [Elementary data-quality report](https://timboslice003.github.io/prediction-market-trade-reporting/elementary/);
+then read the [loss-budget bridge model](models/reconciliation/recon_loss_budget_bridge.sql),
+the [planted-breaks table](#planted-breaks-and-what-catches-each), and the
+[FIXML mapping](docs/FIXML_MAPPING.md).
+
+## Overview
+
 A regulatory-style reporting pipeline for an automated market maker that
 answers RFQs (requests for quote) on multi-leg parlays at **an RFQ-based
 prediction market exchange**. It takes the bot's raw logs and turns them into
@@ -16,7 +31,7 @@ break.
 > are included.
 >
 > **How it was built.** The project was built with AI coding agents (Claude),
-> working under Timmy's design, decisions and review.
+> working under Timmy Hernandez's design, decisions and review.
 
 ## Run it
 
@@ -42,12 +57,20 @@ python -m venv .venv-edr && .venv-edr/bin/pip install -r requirements-edr.txt
 python scripts/run_all.py                 # about 4 minutes; timings in work/timings.json
 ```
 
+On Windows the second venv's pip is `.venv-edr\Scripts\pip install -r requirements-edr.txt`.
+
+CI runs `python scripts/run_all.py --no-fixml-schema`: it renders the FIXML
+samples and round-trips them against the mart, but skips validation against
+the FIX schema, a third-party download this repo does not redistribute.
+Schema validation is a local step: plain `run_all.py` (above) fetches the
+schema once and validates; see [docs/FIXML_MAPPING.md](docs/FIXML_MAPPING.md#schema-and-validation).
+
 | step | seconds (local run) |
 |---|---:|
 | generate synthetic data | 28 |
 | dbt deps | 9 |
 | dbt build (305 nodes) | 59 |
-| FIXML schema fetch + render + validate | 4 |
+| FIXML schema fetch (local only) + render + validate | 4 |
 | Dagster: validate definitions + routine job | 72 |
 | dbt docs generate | 8 |
 | Elementary report | 23–61 |
@@ -120,8 +143,8 @@ taker-script ledgers ──┘
 - **FIXML** (`scripts/render_fixml.py`, `scripts/check_fixml.py`,
   `docs/FIXML_MAPPING.md`). Sample FIX TradeCaptureReport batches, validated
   against the FIX Trading Community's schema (fetched and checksum-verified
-  by `scripts/fetch_fixml_schema.py`, not redistributed) and round-tripped
-  field by field against the mart.
+  by `scripts/fetch_fixml_schema.py`, not redistributed; a local step, not
+  in CI) and round-tripped field by field against the mart (locally and in CI).
 - **Orchestration** (`orchestration/`, `docs/ORCHESTRATION.md`). Dagster:
   every dbt model an asset, every dbt test an asset check, the FIXML render
   an asset with its validation as a check, jobs that match the dbt

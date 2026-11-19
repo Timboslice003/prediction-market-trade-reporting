@@ -1,6 +1,6 @@
 """Run the whole pipeline end to end on synthetic data, timing each step.
 
-    python scripts/run_all.py [--skip-edr] [--skip-dagster] [--site work/site]
+    python scripts/run_all.py [--skip-edr] [--skip-dagster] [--no-fixml-schema] [--site work/site]
 
 Steps (each must succeed; the script stops at the first failure):
   1. generate      scripts/generate_synthetic.py -> data/synthetic
@@ -9,6 +9,9 @@ Steps (each must succeed; the script stops at the first failure):
   4. fixml schema  scripts/fetch_fixml_schema.py (skipped if already present)
   5. fixml render  scripts/render_fixml.py -> work/fixml
   6. fixml check   scripts/check_fixml.py (schema validation + round trip)
+--no-fixml-schema (what CI uses) skips step 4 and the schema half of step 6
+(also inside the Dagster asset check): the round trip still runs. The schema
+is a third-party download, so validation against it is a local step.
   7. dagster       definitions validate, then the `routine` job
   8. dbt docs      dbt docs generate --static
   9. elementary    edr report (from the separate .venv-edr; see requirements-edr.txt)
@@ -41,6 +44,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-edr", action="store_true")
     ap.add_argument("--skip-dagster", action="store_true")
+    ap.add_argument("--no-fixml-schema", action="store_true",
+                    help="skip the FIXML schema download and validation (round trip still runs)")
     ap.add_argument("--site", default="work/site")
     ap.add_argument("--edr-venv", default=os.environ.get("PM_EDR_VENV", ".venv-edr"))
     a = ap.parse_args()
@@ -48,6 +53,8 @@ def main():
     work = ROOT / "work"
     work.mkdir(exist_ok=True)
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    if a.no_fixml_schema:
+        env["PM_FIXML_SKIP_SCHEMA"] = "1"     # read by check_fixml.py, also inside the Dagster check
     # absolute paths, so every tool (edr runs from its own folder) sees the same files
     for var, default in {"DBT_DATA_ROOT": "data/synthetic", "DBT_STAGING_PARQUET_ROOT": "work/staging_parquet",
                          "PM_DUCKDB_PATH": "work/pm_reporting.duckdb", "PM_FIXML_DIR": "work/fixml",
@@ -84,6 +91,9 @@ def main():
     schema_ok = (work / "fixml_schema" / "latest_ep309_patched" / "fixml-main-Latest.xsd").exists()
     timings = []
     for name, cmd in steps:
+        if name == "fixml schema" and a.no_fixml_schema:
+            timings.append({"step": name, "seconds": 0.0, "note": "skipped (--no-fixml-schema)"})
+            continue
         if name == "fixml schema" and schema_ok:
             timings.append({"step": name, "seconds": 0.0, "note": "already present"})
             continue

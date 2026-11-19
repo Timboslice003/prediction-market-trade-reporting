@@ -1,7 +1,7 @@
 """Validate the sample FIXML files and round-trip them against the mart.
 
     python scripts/check_fixml.py [--fixml-dir DIR]
-        [--schema PATH/fixml-main-Latest.xsd] [--db PATH]
+        [--schema PATH/fixml-main-Latest.xsd | --skip-schema] [--db PATH]
 
 1. Schema: every file must validate against the FIXML schema given by
    --schema (default: the patched copy of the FIX Trading Community's
@@ -10,6 +10,10 @@
    never committed.
    If the schema cannot be loaded the script says so and falls back to
    well-formedness checks only (exit code 2, not 0).
+   --skip-schema (or PM_FIXML_SKIP_SCHEMA=1) skips step 1 on purpose: CI does
+   this, because the schema is a third-party download that is not
+   redistributed; schema validation is a local step (docs/FIXML_MAPPING.md).
+   The round trip still runs and must pass (exit 0).
 2. Round trip: parse each file back and check, for every TrdCaptRpt, that the
    ids (trade, order, quote, RFQ), quantity, price, side, execution time,
    trade date, contract, notional, fee, role and data-quality notes equal
@@ -51,6 +55,9 @@ def main():
     ap.add_argument("--fixml-dir", default=os.environ.get("PM_FIXML_DIR", "work/fixml"))
     ap.add_argument("--schema", default=os.environ.get(
         "PM_FIXML_SCHEMA", "work/fixml_schema/latest_ep309_patched/fixml-main-Latest.xsd"))
+    ap.add_argument("--skip-schema", action="store_true",
+                    default=os.environ.get("PM_FIXML_SKIP_SCHEMA", "") == "1",
+                    help="round trip only; schema validation is a local step")
     ap.add_argument("--db", default=os.environ.get("PM_DUCKDB_PATH", "work/pm_reporting.duckdb"))
     a = ap.parse_args()
 
@@ -61,12 +68,16 @@ def main():
         manifest = {f["file"]: f for f in json.load(fh)["files"]}
 
     schema, schema_ok = None, True
-    try:
-        schema = etree.XMLSchema(etree.parse(a.schema))
-        print(f"schema loaded: {a.schema}")
-    except Exception as e:  # noqa: BLE001 - report and fall back
-        schema_ok = False
-        print(f"SCHEMA NOT LOADED ({e}); well-formedness checks only")
+    if a.skip_schema:
+        print("schema validation SKIPPED (--skip-schema): round trip only; "
+              "run scripts/fetch_fixml_schema.py and this script without the flag to validate")
+    else:
+        try:
+            schema = etree.XMLSchema(etree.parse(a.schema))
+            print(f"schema loaded: {a.schema}")
+        except Exception as e:  # noqa: BLE001 - report and fall back
+            schema_ok = False
+            print(f"SCHEMA NOT LOADED ({e}); well-formedness checks only")
 
     con = duckdb.connect(a.db, read_only=True)
     failures = []
@@ -155,7 +166,7 @@ def main():
         sys.exit(1)
     if not schema_ok:
         sys.exit(2)
-    print("ALL CHECKS PASSED")
+    print("ROUND TRIP PASSED (schema validation skipped)" if a.skip_schema else "ALL CHECKS PASSED")
 
 
 if __name__ == "__main__":

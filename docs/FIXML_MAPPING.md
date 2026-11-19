@@ -45,6 +45,21 @@ and round-trips them against the mart.
   else changes, and no field used here touches that type. The fetch script
   refuses to patch if the type is already defined.
 - **Validator:** lxml (libxml2) `XMLSchema` over `fixml-main-Latest.xsd`.
+- **Schema validation is a local step, not part of CI.** The schema is a
+  third-party package that this repo does not redistribute, and CI should
+  not depend on, or automate downloads from, the FIX Trading Community's
+  site on every push. CI renders the files and runs the round trip only
+  (`scripts/run_all.py --no-fixml-schema`, which sets
+  `PM_FIXML_SKIP_SCHEMA=1` for `check_fixml.py` and the Dagster check). To
+  validate locally, after a build:
+
+  ```bash
+  python scripts/fetch_fixml_schema.py      # once: download, sha256 check, patch
+  python scripts/render_fixml.py
+  python scripts/check_fixml.py             # schema + round trip; ends "ALL CHECKS PASSED"
+  ```
+
+  `python scripts/run_all.py` without the flag does the same.
 - **Schema validity is not enough on its own.** Many FIX enum types accept
   reserved or extra values; for example `Side="9"` is schema-valid (it means
   "Cross short"). The round-trip check is what proves the content.

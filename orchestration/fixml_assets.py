@@ -5,7 +5,8 @@ mart_daily_trade_report and fct_fills from DuckDB read-only and writes the
 sample files to PM_FIXML_DIR (default work/fixml). scripts/check_fixml.py
 (schema validation + round trip against the mart) is the asset check; it needs
 the schema from scripts/fetch_fixml_schema.py and reports a WARN (not a pass)
-when the schema is missing.
+when the schema is missing. With PM_FIXML_SKIP_SCHEMA=1 (CI) it checks the
+round trip only, on purpose, and says so in the check's metadata.
 """
 import json
 import os
@@ -87,7 +88,12 @@ def fixml_sample_trade_reports(context: AssetExecutionContext):
 def fixml_valid_and_round_trips():
     proc = _run("check_fixml.py", "--fixml-dir", str(FIXML_DIR))
     tail = "\n".join(proc.stdout.strip().splitlines()[-15:])
-    meta = {"exit_code": proc.returncode, "output_tail": MetadataValue.text(tail)}
+    meta = {
+        "exit_code": proc.returncode,
+        "schema_validation": "skipped (PM_FIXML_SKIP_SCHEMA=1)"
+        if os.environ.get("PM_FIXML_SKIP_SCHEMA", "") == "1" else "run",
+        "output_tail": MetadataValue.text(tail),
+    }
     if proc.returncode == 2:  # schema not loadable: well-formedness only
         return AssetCheckResult(passed=False, severity=AssetCheckSeverity.WARN, metadata=meta)
     return AssetCheckResult(passed=proc.returncode == 0, severity=AssetCheckSeverity.ERROR, metadata=meta)
